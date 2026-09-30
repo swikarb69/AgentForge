@@ -19,19 +19,22 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 0 — Foundation (Current Release: v0.1.0)**
+> **Sprint 1 — Repository Intelligence (Current Release: v0.2.0)**
 >
-> AgentForge is currently under active development using an **Agile + Scrum-inspired iterative methodology**.
+> AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprint 0**:
-> - Core FastAPI application foundation (`backend/app/main.py`) exposing health and version endpoints.
-> - Type-safe Pydantic Settings system (`backend/app/core/config.py`).
-> - Baseline container execution environment (`sandbox/Dockerfile`) and security policy schema (`sandbox/policies/security_policy.json`).
-> - Pytest test suite setup covering unit, integration, and configuration behavior.
-> - GitHub Actions CI workflow (`.github/workflows/ci.yml`) enforcing Ruff linting, MyPy type checks, Bandit security scans, and Pytest coverage.
-> - Architectural documentation suite (`docs/`).
+> **Implemented in Sprint 0 & 1**:
+> - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
+> - **Repository Scanner**: Recursive file tree scanner (`backend/app/repository/scanner.py`) enforcing path traversal validation, file size limits (`MAX_FILE_SIZE = 1MB`), binary file detection, and `.gitignore` pattern filtering.
+> - **Language Detection & Metadata**: Extension-to-language mapping and test file classifier (`backend/app/repository/metadata.py`).
+> - **Python AST Code Intelligence**: Standard library AST parser (`backend/app/parsing/python_parser.py`) extracting classes, functions, class methods with parent bindings, import statements, parameter signatures, and docstrings.
+> - **Structural Code Chunking**: Semantic Python chunker (`backend/app/indexing/chunker.py`) creating symbol-bounded code chunks, and line-based fallback chunking for non-Python codebases.
+> - **In-Memory Repository Index & Deterministic Search**: Fast in-memory index engine (`backend/app/indexing/index.py`) providing ranked keyword and symbol search.
+> - **Repository APIs**: OpenAPI endpoints (`POST /api/v1/repositories/analyze` and `POST /api/v1/repositories/search`).
+> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) verified with 100% coverage.
+> - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: AI Agent orchestration, RAG indexing, sandbox execution enforcement, and GitHub API interactions are planned for Sprints 1–8.*
+> *Note: AI Agent orchestration, RAG retrieval augmentation, GitHub API integration, and container sandbox execution runners are planned for Sprints 2–8.*
 
 ---
 
@@ -49,12 +52,12 @@ AgentForge addresses these issues through:
 
 ---
 
-## End-to-End Planned Workflow
+## End-to-End Operational Workflow
 
 ```mermaid
 flowchart TD
     A["1. GitHub Issue Ingestion"] --> B["2. Issue Analysis"]
-    B --> C["3. Repository Understanding"]
+    B --> C["3. Repository Intelligence (Implemented Sprint 1)"]
     C --> D["4. Implementation Planning"]
     D --> E["5. Relevant Context Retrieval (RAG)"]
     E --> F["6. Code Generation"]
@@ -90,27 +93,41 @@ AgentForge/
 ├── backend/
 │   └── app/
 │       ├── __init__.py
-│       ├── main.py              # FastAPI application entrypoint
-│       └── core/
-│           ├── __init__.py
-│           └── config.py        # Pydantic Settings configuration
+│       ├── main.py                    # FastAPI entrypoint
+│       ├── api/
+│       │   └── routes/
+│       │       └── repositories.py   # Repository Analysis & Search APIs
+│       ├── core/
+│       │   └── config.py              # Pydantic Settings
+│       ├── indexing/
+│       │   ├── chunker.py             # Structural code chunker
+│       │   └── index.py               # In-memory repository index & search
+│       ├── parsing/
+│       │   ├── python_parser.py       # Python AST parser
+│       │   └── symbols.py             # AST node helpers
+│       └── repository/
+│           ├── analyzer.py            # High-level RepositoryAnalyzer pipeline
+│           ├── filters.py             # Path validation & ignore rules
+│           ├── metadata.py            # Language detection & test classifier
+│           ├── models.py              # Pydantic data schemas
+│           └── scanner.py             # Recursive filesystem scanner
+│
+├── agentforge-fixtures/
+│   └── sample-project/                # Fixture repository for integration testing
 │
 ├── sandbox/
-│   ├── Dockerfile              # Isolated sandbox container baseline
+│   ├── Dockerfile                    # Isolated sandbox container baseline
 │   └── policies/
-│       └── security_policy.json # Baseline security limits & policy schema
+│       └── security_policy.json       # Baseline security limits & policy schema
 │
 ├── tests/
-│   ├── unit/
-│   │   ├── test_health.py      # Health & version API endpoint tests
-│   │   └── test_config.py      # Configuration & env override tests
-│   └── integration/
-│       └── test_app_init.py    # FastAPI initialization & OpenAPI tests
+│   ├── unit/                          # Unit test suite
+│   └── integration/                   # Pipeline & API integration test suite
 │
-├── docs/                        # Architectural & engineering specifications
+├── docs/                              # Architecture & specification docs
 │   ├── architecture.md
 │   ├── development-methodology.md
-│   ├── agent-system.md
+│   ├── repository-intelligence.md
 │   ├── security.md
 │   ├── testing.md
 │   ├── deployment.md
@@ -118,28 +135,23 @@ AgentForge/
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml              # GitHub Actions CI pipeline
+│       └── ci.yml                    # GitHub Actions CI pipeline
 │
-├── .env.example                # Environment variables template
-├── .gitignore                  # Git exclusion rules
-├── CHANGELOG.md                # Sprint release notes
-├── CONTRIBUTING.md             # Contribution guidelines
-├── LICENSE                     # MIT License
-├── README.md                   # Project documentation
-├── docker-compose.yml          # Local container orchestration
-└── pyproject.toml              # Build, dependencies, and tool settings
+├── .env.example                      # Environment variables template
+├── .gitignore                        # Git exclusion rules
+├── CHANGELOG.md                      # Release notes
+├── CONTRIBUTING.md                   # Contribution guidelines
+├── LICENSE                           # MIT License
+├── README.md                         # Documentation
+├── docker-compose.yml                # Local container orchestration
+└── pyproject.toml                    # Build & tool configuration
 ```
 
 ---
 
-## Quick Start & Installation
+## Quick Start & Usage
 
-### 1. Prerequisites
-- Python 3.13+
-- Git
-- Docker (optional for Sprint 0, required for sandbox features in Sprint 5)
-
-### 2. Setup Local Environment
+### 1. Setup Local Environment
 ```bash
 # Clone repository
 git clone https://github.com/swikarb69/AgentForge.git
@@ -147,26 +159,25 @@ cd AgentForge
 
 # Create and activate virtual environment
 python -m venv .venv
-# On Windows:
+# Windows:
 .venv\Scripts\activate
-# On Linux/macOS:
+# Linux/macOS:
 source .venv/bin/activate
 
-# Install dependencies in editable mode
+# Install dependencies
 pip install -e ".[dev]"
-
-# Configure environment variables
-cp .env.example .env
 ```
 
-### 3. Run FastAPI Application
+### 2. Run FastAPI Application
 ```bash
 uvicorn backend.app.main:app --reload --port 8000
 ```
-API Endpoints:
+Endpoints:
 - Health Check: `http://localhost:8000/api/v1/health`
 - Version Info: `http://localhost:8000/api/v1/version`
-- Interactive OpenAPI Docs: `http://localhost:8000/docs`
+- Analyze Repository: `POST http://localhost:8000/api/v1/repositories/analyze`
+- Search Repository: `POST http://localhost:8000/api/v1/repositories/search`
+- OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
 
@@ -193,9 +204,9 @@ pytest --cov=backend/app --cov-report=term-missing
 
 ## Planned 11-Sprint Roadmap
 
-- **Sprint 0 — Foundation** (CURRENT): Base application structure, config, testing, CI, and docs.
-- **Sprint 1 — Repository Intelligence**: Repo scanner, file tree builder, AST symbol extractor.
-- **Sprint 2 — Issue Understanding**: GitHub issue parser, acceptance criteria generator.
+- **Sprint 0 — Foundation** (COMPLETED): Base application structure, config, testing, CI, docs.
+- **Sprint 1 — Repository Intelligence** (COMPLETED): Scanner, AST parser, chunker, in-memory index, search API.
+- **Sprint 2 — Issue Understanding** (NEXT): GitHub issue parser, acceptance criteria generator.
 - **Sprint 3 — Planning Agent**: Implementation planner, touch-set isolator.
 - **Sprint 4 — Context Synthesis & Coding Agent**: Code RAG indexer and code generator.
 - **Sprint 5 — Execution Sandbox Engine**: Isolated Docker execution runner and resource caps.

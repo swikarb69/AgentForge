@@ -7,13 +7,13 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 ## Sprint Overview
 
 ```text
-[Sprint 0] Foundation (CURRENT)
+[Sprint 0] Foundation (COMPLETED)
     │
     ▼
-[Sprint 1] Repository Intelligence
+[Sprint 1] Repository Intelligence (CURRENT / COMPLETE)
     │
     ▼
-[Sprint 2] Issue Understanding
+[Sprint 2] Issue Understanding (NEXT)
     │
     ▼
 [Sprint 3] Implementation Planning Agent
@@ -45,15 +45,15 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 ## Detailed Sprint Specifications
 
 ### Sprint 0 — Foundation
-- **Status**: **CURRENT**
+- **Status**: COMPLETED
 - **Deliverables**: Repository structure, FastAPI application entrypoint, Pydantic settings config, Dockerfile baseline, baseline security policy JSON, Pytest unit/integration test baseline, GitHub Actions CI workflow (`ci.yml`), MIT License, documentation suite.
 
 ### Sprint 1 — Repository Intelligence
-- **Status**: PLANNED
-- **Deliverables**: Repository scanner, file tree generator, AST symbol parser, function/class extractor, dependency map analyzer.
+- **Status**: **CURRENT / COMPLETE**
+- **Deliverables**: Repository Scanner, Ignore Rule Filters, Language Detection, Test File Classifier, Python AST Parser, Symbol Extractor, Structural Code Chunker, In-Memory Repository Index, Deterministic Search Engine, Repositories API (`/api/v1/repositories/analyze`, `/api/v1/repositories/search`), integration test suite.
 
 ### Sprint 2 — Issue Understanding
-- **Status**: PLANNED
+- **Status**: PLANNED (NEXT)
 - **Deliverables**: GitHub issue API integration, issue description parser, requirement extractor, acceptance criteria generator.
 
 ### Sprint 3 — Planning Agent

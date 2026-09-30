@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
+from backend.app.api.routes import repositories
 from backend.app.core.config import settings
 
 
@@ -32,6 +33,9 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+
+# Register API routers
+app.include_router(repositories.router)
 
 
 @app.get(
