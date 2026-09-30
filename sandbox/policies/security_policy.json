@@ -1,0 +1,27 @@
+{
+  "policy_version": "0.1.0",
+  "status": "foundation_only",
+  "description": "Baseline security policy schema for Sprint 0. Full enforcement in Sprint 5.",
+  "execution_timeout_seconds": 30,
+  "memory_limit": "512m",
+  "cpu_limit": 1,
+  "network_enabled": false,
+  "read_only_root_filesystem": true,
+  "drop_capabilities": [
+    "ALL"
+  ],
+  "allowed_commands": [
+    "pytest",
+    "python",
+    "git",
+    "ruff"
+  ],
+  "denied_command_patterns": [
+    "sudo",
+    "rm -rf /",
+    "curl | bash",
+    "wget | bash",
+    "cat /etc/passwd",
+    "cat /etc/shadow"
+  ]
+}
