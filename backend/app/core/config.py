@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
-    # AI & GitHub API Tokens (Optional in Sprint 0)
+    # AI & GitHub API Tokens (Optional in Sprint 0/1)
     GITHUB_TOKEN: SecretStr | None = None
     OPENAI_API_KEY: SecretStr | None = None
     GEMINI_API_KEY: SecretStr | None = None
@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     SANDBOX_TIMEOUT: int = 30
     SANDBOX_MEMORY_LIMIT: str = "512m"
     SANDBOX_CPU_LIMIT: int = 1
+
+    # Repository Scanner Configuration
+    MAX_FILE_SIZE: int = 1_048_576  # 1MB limit per file
+    MAX_FILES: int = 10_000  # Max files scanned per repo
 
 
 settings = Settings()
