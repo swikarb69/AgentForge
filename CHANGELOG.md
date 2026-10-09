@@ -5,6 +5,18 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-10-09
+
+### Added - Sprint 2: Issue Intelligence
+- **Issue Parser**: Markdown section, bullet point list, and code block parser (`backend/app/issue/parser.py`).
+- **Requirement & Criteria Extractor**: Deterministic functional requirement and acceptance criteria extractor (`backend/app/issue/extractor.py`).
+- **Reference & Constraint Extractor**: Extraction of file paths, AST symbols, HTTP API endpoints, constraints, and keywords (`backend/app/issue/references.py`).
+- **Repository-Aware Issue Matcher**: Deterministic scoring engine mapping issue requirements to code chunks/symbols with explainable match reasons (`backend/app/issue/matcher.py`).
+- **Issue Context Builder**: High-level pipeline service assembling structured `IssueAnalysis` and mapping it to `IssueContext` (`backend/app/issue/service.py`).
+- **Issues REST API**: OpenAPI endpoints (`POST /api/v1/issues/analyze` and `POST /api/v1/issues/context`) (`backend/app/api/routes/issues.py`).
+- **Issue Fixtures & Tests**: Sample issue fixtures (`agentforge-fixtures/issues/`) and integration test suite (`tests/integration/test_issue_pipeline.py`).
+- **Documentation**: Technical specifications in `docs/issue-intelligence.md`.
+
 ## [0.2.0] - 2026-09-30
 
 ### Added - Sprint 1: Repository Intelligence

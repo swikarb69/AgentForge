@@ -19,22 +19,20 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 1 — Repository Intelligence (Current Release: v0.2.0)**
+> **Sprint 2 — Issue Intelligence (Current Release: v0.3.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprint 0 & 1**:
+> **Implemented in Sprint 0, 1 & 2**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
-> - **Repository Scanner**: Recursive file tree scanner (`backend/app/repository/scanner.py`) enforcing path traversal validation, file size limits (`MAX_FILE_SIZE = 1MB`), binary file detection, and `.gitignore` pattern filtering.
-> - **Language Detection & Metadata**: Extension-to-language mapping and test file classifier (`backend/app/repository/metadata.py`).
-> - **Python AST Code Intelligence**: Standard library AST parser (`backend/app/parsing/python_parser.py`) extracting classes, functions, class methods with parent bindings, import statements, parameter signatures, and docstrings.
-> - **Structural Code Chunking**: Semantic Python chunker (`backend/app/indexing/chunker.py`) creating symbol-bounded code chunks, and line-based fallback chunking for non-Python codebases.
-> - **In-Memory Repository Index & Deterministic Search**: Fast in-memory index engine (`backend/app/indexing/index.py`) providing ranked keyword and symbol search.
-> - **Repository APIs**: OpenAPI endpoints (`POST /api/v1/repositories/analyze` and `POST /api/v1/repositories/search`).
-> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) verified with 100% coverage.
+> - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
+> - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
+> - **Issue Context Pipeline**: High-level service (`IssueContextBuilder`) mapping software issue requirements directly to codebase files, symbols, and code chunks with explainable scoring breakdowns and unresolved reference tracking.
+> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`.
+> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) with 100% test coverage.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: AI Agent orchestration, RAG retrieval augmentation, GitHub API integration, and container sandbox execution runners are planned for Sprints 2–8.*
+> *Note: AI Agent orchestration, RAG retrieval augmentation, GitHub API integration, and container sandbox execution runners are planned for Sprints 3–8.*
 
 ---
 

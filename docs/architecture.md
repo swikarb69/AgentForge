@@ -7,15 +7,13 @@ This document presents the technical architecture, core operational workflow, mo
 ## 1. System Implementation Status
 
 > [!IMPORTANT]
-> **Current Status**: **Sprint 1 — Repository Intelligence**
+> **Current Status**: **Sprint 2 — Issue Intelligence**
 >
-> - **IMPLEMENTED IN SPRINT 0 & 1**:
+> - **IMPLEMENTED IN SPRINT 0, 1 & 2**:
 >   - FastAPI core application & Pydantic configuration (`backend/app/main.py`, `backend/app/core/config.py`).
->   - Repository Scanner, Filters, & Metadata Engine (`backend/app/repository/`).
->   - Python AST Parser & Symbol Extraction Engine (`backend/app/parsing/`).
->   - Structural & Fallback Code Chunker (`backend/app/indexing/chunker.py`).
->   - In-Memory Repository Index & Deterministic Search Engine (`backend/app/indexing/index.py`).
->   - Repository Analysis & Search APIs (`/api/v1/repositories/analyze`, `/api/v1/repositories/search`).
+>   - Repository Intelligence Subsystem (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
+>   - Issue Intelligence Subsystem (`backend/app/issue/`): Parser, Requirement Extractor, Reference Extractor, Repository Matcher, Issue Context Pipeline.
+>   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`.
 >   - Baseline Sandbox Dockerfile and Security Policy JSON (`sandbox/`).
 >   - Unit, Integration, & Pipeline Test Suites with 100% Code Coverage (`tests/`).
 >   - GitHub Actions CI Pipeline (`.github/workflows/ci.yml`).

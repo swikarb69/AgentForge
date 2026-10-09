@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from backend.app.api.routes import repositories
+from backend.app.api.routes import issues, repositories
 from backend.app.core.config import settings
 
 
@@ -36,6 +36,7 @@ app = FastAPI(
 
 # Register API routers
 app.include_router(repositories.router)
+app.include_router(issues.router)
 
 
 @app.get(
