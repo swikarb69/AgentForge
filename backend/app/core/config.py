@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
-    # AI & GitHub API Tokens (Optional in Sprint 0/1)
+    # AI & GitHub API Tokens (Optional in Sprint 0/1/2)
     GITHUB_TOKEN: SecretStr | None = None
     OPENAI_API_KEY: SecretStr | None = None
     GEMINI_API_KEY: SecretStr | None = None
@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # Repository Scanner Configuration
     MAX_FILE_SIZE: int = 1_048_576  # 1MB limit per file
     MAX_FILES: int = 10_000  # Max files scanned per repo
+
+    # Issue Intelligence Configuration
+    MAX_ISSUE_TITLE_LENGTH: int = 256
+    MAX_ISSUE_DESCRIPTION_LENGTH: int = 65_536  # 64KB max issue text
 
 
 settings = Settings()
