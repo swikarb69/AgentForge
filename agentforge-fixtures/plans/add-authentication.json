@@ -1,0 +1,118 @@
+{
+  "id": "PLAN-ADD-AUTH",
+  "issue_id": "ISSUE-003",
+  "objective": "Add authentication router endpoint",
+  "summary": "Implement POST /api/v1/auth/login endpoint and tests",
+  "status": "ready",
+  "assumptions": [
+    {
+      "assumption": "FastAPI APIRouter structure follows existing conventions",
+      "reason": "Backend uses FastAPI APIRouter across existing routes"
+    }
+  ],
+  "files_to_modify": [
+    {
+      "path": "app/main.py",
+      "change_type": "modify",
+      "reason": "Register auth router",
+      "affected_symbols": ["app"]
+    }
+  ],
+  "files_to_create": [
+    {
+      "path": "app/api/auth.py",
+      "change_type": "create",
+      "reason": "Add login endpoint handler",
+      "affected_symbols": []
+    },
+    {
+      "path": "tests/test_api_auth.py",
+      "change_type": "create",
+      "reason": "Add API test suite for login endpoint",
+      "affected_symbols": []
+    }
+  ],
+  "files_to_delete": [],
+  "symbol_changes": [],
+  "tasks": [
+    {
+      "task_id": "TASK-001",
+      "title": "Create file app/api/auth.py",
+      "description": "Implement login POST handler",
+      "order": 1,
+      "target_files": ["app/api/auth.py"],
+      "target_symbols": [],
+      "change_type": "create",
+      "dependencies": [],
+      "verification": "Confirm syntax is valid",
+      "addressed_requirements": ["REQ-003"],
+      "addressed_acceptance_criteria": ["AC-003"]
+    },
+    {
+      "task_id": "TASK-002",
+      "title": "Modify app/main.py",
+      "description": "Include auth router in FastAPI app",
+      "order": 2,
+      "target_files": ["app/main.py"],
+      "target_symbols": ["app"],
+      "change_type": "modify",
+      "dependencies": ["TASK-001"],
+      "verification": "Confirm app boots with route registered",
+      "addressed_requirements": ["REQ-003"],
+      "addressed_acceptance_criteria": ["AC-003"]
+    },
+    {
+      "task_id": "TASK-003",
+      "title": "Create tests in tests/test_api_auth.py",
+      "description": "Test POST /api/v1/auth/login endpoint",
+      "order": 3,
+      "target_files": ["tests/test_api_auth.py"],
+      "target_symbols": [],
+      "change_type": "create",
+      "dependencies": ["TASK-001", "TASK-002"],
+      "verification": "Execute pytest tests/test_api_auth.py",
+      "addressed_requirements": ["REQ-003"],
+      "addressed_acceptance_criteria": ["AC-003"]
+    }
+  ],
+  "test_plan": {
+    "existing_tests": [],
+    "tests_to_modify": [],
+    "tests_to_add": ["tests/test_api_auth.py"],
+    "verification_cases": [
+      {
+        "id": "VC-001",
+        "description": "POST /api/v1/auth/login returns JWT token",
+        "expected_behavior": "Status 200 with token response",
+        "acceptance_criterion_id": "AC-003"
+      }
+    ]
+  },
+  "dependencies": [
+    {
+      "source_task_id": "TASK-002",
+      "target_task_id": "TASK-001",
+      "reason": "Router file must exist before importing into main.py"
+    },
+    {
+      "source_task_id": "TASK-003",
+      "target_task_id": "TASK-002",
+      "reason": "Route must be registered before API test execution"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Security-sensitive authentication logic modified",
+      "severity": "high",
+      "reason": "Exposes new public authentication endpoint",
+      "mitigation": "Enforce input validation and rate limiting"
+    }
+  ],
+  "unresolved_questions": [],
+  "validation": {
+    "valid": true,
+    "status": "ready",
+    "errors": [],
+    "warnings": []
+  }
+}

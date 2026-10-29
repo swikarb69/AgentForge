@@ -19,20 +19,21 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 2 — Issue Intelligence (Current Release: v0.3.0)**
+> **Sprint 3 — Planning Engine (Current Release: v0.4.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprint 0, 1 & 2**:
+> **Implemented in Sprint 0, 1, 2 & 3**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
 > - **Issue Context Pipeline**: High-level service (`IssueContextBuilder`) mapping software issue requirements directly to codebase files, symbols, and code chunks with explainable scoring breakdowns and unresolved reference tracking.
-> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`.
-> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) with 100% test coverage.
+> - **Planning Engine Subsystem**: Impact analysis, implementation task generation, requirement traceability, acceptance verification planning, dependency analysis & cycle detection, risk analysis, grounded assumption extraction, plan validation, and planning service (`backend/app/planning/`).
+> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`.
+> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) with comprehensive test coverage.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: AI Agent orchestration, RAG retrieval augmentation, GitHub API integration, and container sandbox execution runners are planned for Sprints 3–8.*
+> *Note: AI Agent orchestration with LLM planners, code generation, container sandbox execution runners, automated debugging repair loops, and GitHub PR creation are planned for Sprints 4–8.*
 
 ---
 
@@ -175,6 +176,10 @@ Endpoints:
 - Version Info: `http://localhost:8000/api/v1/version`
 - Analyze Repository: `POST http://localhost:8000/api/v1/repositories/analyze`
 - Search Repository: `POST http://localhost:8000/api/v1/repositories/search`
+- Analyze Issue: `POST http://localhost:8000/api/v1/issues/analyze`
+- Issue Context: `POST http://localhost:8000/api/v1/issues/context`
+- Create Plan: `POST http://localhost:8000/api/v1/planning/create`
+- Validate Plan: `POST http://localhost:8000/api/v1/planning/validate`
 - OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
@@ -204,9 +209,9 @@ pytest --cov=backend/app --cov-report=term-missing
 
 - **Sprint 0 — Foundation** (COMPLETED): Base application structure, config, testing, CI, docs.
 - **Sprint 1 — Repository Intelligence** (COMPLETED): Scanner, AST parser, chunker, in-memory index, search API.
-- **Sprint 2 — Issue Understanding** (NEXT): GitHub issue parser, acceptance criteria generator.
-- **Sprint 3 — Planning Agent**: Implementation planner, touch-set isolator.
-- **Sprint 4 — Context Synthesis & Coding Agent**: Code RAG indexer and code generator.
+- **Sprint 2 — Issue Intelligence** (COMPLETED): Issue parser, requirement extractor, reference extractor, issue matcher.
+- **Sprint 3 — Planning Engine** (COMPLETED): Impact analyzer, task generator, dependency graph, risk analyzer, plan validator.
+- **Sprint 4 — Context Synthesis & Coding Agent** (NEXT): Code RAG indexer and code generator.
 - **Sprint 5 — Execution Sandbox Engine**: Isolated Docker execution runner and resource caps.
 - **Sprint 6 — Test Generation & Automated Debugger**: Automated test creation & repair loop.
 - **Sprint 7 — Security & Code Review Engine**: Secret scanner, prompt injection defender, code reviewer.

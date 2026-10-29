@@ -1,0 +1,101 @@
+{
+  "id": "PLAN-FIX-TOKEN",
+  "issue_id": "ISSUE-001",
+  "objective": "Fix expired JWT access token verification",
+  "summary": "Reject expired JWT tokens in app/auth.py and verify via tests/test_auth.py",
+  "status": "ready",
+  "assumptions": [
+    {
+      "assumption": "Existing third-party libraries and frameworks remain in use",
+      "reason": "Issue does not request upgrading or replacing dependencies"
+    }
+  ],
+  "files_to_modify": [
+    {
+      "path": "app/auth.py",
+      "change_type": "modify",
+      "reason": "Update verify_token function to reject expired tokens",
+      "affected_symbols": ["verify_token"]
+    },
+    {
+      "path": "tests/test_auth.py",
+      "change_type": "test",
+      "reason": "Add test case covering expired token rejection",
+      "affected_symbols": ["test_verify_token"]
+    }
+  ],
+  "files_to_create": [],
+  "files_to_delete": [],
+  "symbol_changes": [
+    {
+      "file_path": "app/auth.py",
+      "symbol_name": "verify_token",
+      "symbol_type": "function",
+      "change_type": "modify",
+      "reason": "Add expiration validation"
+    }
+  ],
+  "tasks": [
+    {
+      "task_id": "TASK-001",
+      "title": "Update verify_token in app/auth.py",
+      "description": "Reject expired tokens with authentication failure",
+      "order": 1,
+      "target_files": ["app/auth.py"],
+      "target_symbols": ["verify_token"],
+      "change_type": "modify",
+      "dependencies": [],
+      "verification": "Check syntax and type checks",
+      "addressed_requirements": ["REQ-001"],
+      "addressed_acceptance_criteria": ["AC-001"]
+    },
+    {
+      "task_id": "TASK-002",
+      "title": "Update tests in tests/test_auth.py",
+      "description": "Add regression test for expired token rejection",
+      "order": 2,
+      "target_files": ["tests/test_auth.py"],
+      "target_symbols": [],
+      "change_type": "test",
+      "dependencies": ["TASK-001"],
+      "verification": "Execute pytest tests/test_auth.py",
+      "addressed_requirements": ["REQ-001"],
+      "addressed_acceptance_criteria": ["AC-001"]
+    }
+  ],
+  "test_plan": {
+    "existing_tests": ["tests/test_auth.py"],
+    "tests_to_modify": ["tests/test_auth.py"],
+    "tests_to_add": [],
+    "verification_cases": [
+      {
+        "id": "VC-001",
+        "description": "Expired tokens are rejected with 401",
+        "expected_behavior": "Returns 401 Unauthorized",
+        "acceptance_criterion_id": "AC-001"
+      }
+    ]
+  },
+  "dependencies": [
+    {
+      "source_task_id": "TASK-002",
+      "target_task_id": "TASK-001",
+      "reason": "Tests depend on implementation"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Security-sensitive authentication logic modified",
+      "severity": "high",
+      "reason": "verify_token is used across all authentication paths",
+      "mitigation": "Preserve existing valid token behavior and run regression tests"
+    }
+  ],
+  "unresolved_questions": [],
+  "validation": {
+    "valid": true,
+    "status": "ready",
+    "errors": [],
+    "warnings": []
+  }
+}

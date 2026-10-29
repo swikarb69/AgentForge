@@ -1,0 +1,84 @@
+{
+  "id": "PLAN-AMBIGUOUS",
+  "issue_id": "ISSUE-004",
+  "objective": "Investigate undefined bug",
+  "summary": "Ambiguous issue lacking technical details",
+  "status": "needs_clarification",
+  "assumptions": [
+    {
+      "assumption": "Existing third-party libraries and frameworks remain in use",
+      "reason": "Issue does not specify changes"
+    }
+  ],
+  "files_to_modify": [],
+  "files_to_create": [],
+  "files_to_delete": [],
+  "symbol_changes": [],
+  "tasks": [
+    {
+      "task_id": "TASK-001",
+      "title": "Investigate issue: App fails",
+      "description": "App fails without clear reproduction steps",
+      "order": 1,
+      "target_files": [],
+      "target_symbols": [],
+      "change_type": "modify",
+      "dependencies": [],
+      "verification": "Clarify error logs",
+      "addressed_requirements": ["REQ-004"],
+      "addressed_acceptance_criteria": []
+    },
+    {
+      "task_id": "TASK-002",
+      "title": "Add and verify regression tests",
+      "description": "Write test cases covering clarified requirements",
+      "order": 2,
+      "target_files": [],
+      "target_symbols": [],
+      "change_type": "test",
+      "dependencies": ["TASK-001"],
+      "verification": "Execute tests",
+      "addressed_requirements": ["REQ-004"],
+      "addressed_acceptance_criteria": []
+    }
+  ],
+  "test_plan": {
+    "existing_tests": [],
+    "tests_to_modify": [],
+    "tests_to_add": [],
+    "verification_cases": [
+      {
+        "id": "VC-001",
+        "description": "Verify requirement: App fails",
+        "expected_behavior": "Satisfy requirement REQ-004",
+        "acceptance_criterion_id": null
+      }
+    ]
+  },
+  "dependencies": [
+    {
+      "source_task_id": "TASK-002",
+      "target_task_id": "TASK-001",
+      "reason": "Tests depend on investigation"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Ambiguous or underspecified issue requirements",
+      "severity": "high",
+      "reason": "Issue description lacks technical specifications",
+      "mitigation": "Request clarification from issue author"
+    }
+  ],
+  "unresolved_questions": [
+    "Ambiguity detected: Issue description is too short. Can you provide more details?"
+  ],
+  "validation": {
+    "valid": true,
+    "status": "needs_clarification",
+    "errors": [],
+    "warnings": [
+      "Issue contains ambiguity warnings requiring human clarification."
+    ]
+  }
+}
