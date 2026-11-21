@@ -64,6 +64,52 @@ class GeneratedFileChange(BaseModel):
         return cleaned
 
 
+class FileContext(BaseModel):
+    """Source context for an authorized target file."""
+
+    path: str = Field(description="Normalized relative path to target file")
+    change_type: ChangeType = Field(
+        description="Authorized change type: modify, create, or test"
+    )
+    original_content: str = Field(
+        default="", description="Original file content if exists"
+    )
+    original_hash: str | None = Field(
+        default=None, description="SHA256 hash of original file content"
+    )
+    size_bytes: int = Field(default=0, description="Size of original content in bytes")
+    target_symbols: list[str] = Field(
+        default_factory=list, description="Targeted symbols for this file"
+    )
+    exists: bool = Field(default=True, description="Whether file exists on disk")
+
+
+class SourceContext(BaseModel):
+    """Aggregate bounded source context for code generation."""
+
+    repository_path: str = Field(description="Root path of target repository")
+    target_files: dict[str, FileContext] = Field(
+        default_factory=dict, description="Target file contexts keyed by relative path"
+    )
+    reference_files: dict[str, str] = Field(
+        default_factory=dict, description="Read-only reference file contents"
+    )
+    total_bytes: int = Field(
+        default=0, description="Total size in bytes of gathered context"
+    )
+    warnings: list[str] = Field(
+        default_factory=list, description="Non-blocking context warnings"
+    )
+    errors: list[str] = Field(
+        default_factory=list, description="Blocking context errors"
+    )
+
+    @property
+    def is_valid(self) -> bool:
+        """True if context has no blocking errors."""
+        return len(self.errors) == 0
+
+
 class PatchValidation(BaseModel):
     """Validation report inspecting changes against plan and security bounds."""
 
