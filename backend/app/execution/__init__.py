@@ -17,6 +17,7 @@ from backend.app.execution.policy import (
     PROFILE_COMMAND_MAP,
     ExecutionPolicyEnforcer,
 )
+from backend.app.execution.workspace import WorkspaceManager
 
 __all__ = [
     "CreateExecutionRequest",
@@ -31,5 +32,6 @@ __all__ = [
     "TestSummary",
     "VerificationProfile",
     "VerificationReport",
+    "WorkspaceManager",
     "WorkspaceMetadata",
 ]
