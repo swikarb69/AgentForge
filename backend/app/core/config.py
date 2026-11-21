@@ -25,10 +25,24 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: SecretStr | None = None
     GEMINI_API_KEY: SecretStr | None = None
 
-    # Sandbox Configuration
+    # Sandbox & Execution Configuration
     SANDBOX_TIMEOUT: int = 30
     SANDBOX_MEMORY_LIMIT: str = "512m"
     SANDBOX_CPU_LIMIT: int = 1
+    DOCKER_IMAGE: str = "agentforge-sandbox:latest"
+    WORKSPACE_ROOT: str = "agentforge-workspaces"
+    WORKSPACE_SIZE_LIMIT: int = 50_000_000  # 50MB
+    WORKSPACE_RETENTION_SECONDS: int = 3600  # 1 hour
+    EXECUTION_TIMEOUT: int = 30
+    EXECUTION_MEMORY_LIMIT: str = "512m"
+    EXECUTION_CPU_LIMIT: float = 1.0
+    EXECUTION_PROCESS_LIMIT: int = 64
+    EXECUTION_MAX_OUTPUT: int = 100_000
+    EXECUTION_NETWORK_ENABLED: bool = False
+    ALLOWED_PROFILES: list[str] = [
+        "python-unit-tests",
+        "python-quality-checks",
+    ]
 
     # Repository Scanner Configuration
     MAX_FILE_SIZE: int = 1_048_576  # 1MB limit per file
