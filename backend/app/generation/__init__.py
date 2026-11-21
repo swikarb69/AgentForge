@@ -12,6 +12,7 @@ from backend.app.generation.models import (
     PatchValidation,
     SourceContext,
 )
+from backend.app.generation.patch import PatchBuilder
 from backend.app.generation.prompts import (
     PROMPT_VERSION,
     build_generation_prompt,
@@ -22,6 +23,7 @@ from backend.app.generation.provider import (
     MockCodeGenerationProvider,
     get_provider,
 )
+from backend.app.generation.validator import PatchValidator
 
 __all__ = [
     "PROMPT_VERSION",
@@ -35,7 +37,9 @@ __all__ = [
     "GenerationResult",
     "GenerationStatus",
     "MockCodeGenerationProvider",
+    "PatchBuilder",
     "PatchValidation",
+    "PatchValidator",
     "SourceContext",
     "SourceContextBuilder",
     "build_generation_prompt",
