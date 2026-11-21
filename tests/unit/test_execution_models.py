@@ -211,8 +211,5 @@ def test_create_execution_request() -> None:
     )
     assert api_req.repository_path == "/repos/sample"
     assert api_req.generation_id == "gen-100"
-    assert (
-        api_req.verification_profile
-        == VerificationProfile.PYTHON_QUALITY_CHECKS
-    )
+    assert api_req.verification_profile == VerificationProfile.PYTHON_QUALITY_CHECKS
     assert api_req.policy is None

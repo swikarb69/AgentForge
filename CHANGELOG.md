@@ -5,6 +5,19 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-11-21
+
+### Added - Sprint 5: Execution & Verification Sandbox
+- **Execution Domain Models**: Strongly typed Pydantic models for `ExecutionStatus`, `ExecutionPolicy`, `ExecutionRequest`, `CommandResult`, `TestSummary`, and `VerificationReport` (`backend/app/execution/models.py`).
+- **Policy & Boundary Enforcement**: Execution policy validator enforcing command whitelisting (`pytest`, `python -m pytest`, `ruff check`), command argument injection rejection, strict resource upper bounds (CPU ≤ 2.0 cores, memory ≤ 1024MB, timeout ≤ 120s), and workspace quotas (`backend/app/execution/policy.py`).
+- **Isolated Workspace Manager**: Ephemeral workspace manager with exclusion filtering for sensitive files (`.git`, `.venv`, `.env`, keys, tokens, bytecode), disk quota enforcement (≤ 50MB), and clean context manager teardown (`backend/app/execution/workspace.py`).
+- **Secure Patch Applier**: Patch application engine supporting both `GeneratedFileChange` sequences and unified diffs with path traversal blocking, protected path defenses, and baseline SHA-256 hash checks (`backend/app/execution/patch_applier.py`).
+- **Restricted Docker Runner**: Container runner enforcing unprivileged user execution (`10001:10001`), dropping all Linux capabilities (`--cap-drop=ALL`), read-only rootfs (`--read-only`), ephemeral tmpfs scratch space, disabled network (`--network=none`), output caps (`MAX_OUTPUT_BYTES = 500KB`), and strict No-Host-Fallback (`backend/app/execution/docker_runner.py`).
+- **Test Executor & Verification Engine**: Pytest and Ruff output parsers with structured test metric synthesis, exit code tracking, and auditable verification report generation persisted to `agentforge-artifacts/execution/` (`backend/app/execution/test_executor.py`, `backend/app/execution/verification.py`).
+- **Execution Service & REST APIs**: High-level execution orchestrator exposing `POST /api/v1/execution/create`, `GET /api/v1/execution/reports`, and `GET /api/v1/execution/reports/{execution_id}` (`backend/app/execution/service.py`, `backend/app/api/routes/execution.py`).
+- **Unit, Integration, & Security Test Suites**: Comprehensive test coverage spanning 214 total repository tests, with dedicated security verification for no-host fallback, traversal defense, protected files, and repository immutability (`tests/unit/test_execution_*.py`, `tests/unit/test_workspace.py`, `tests/unit/test_patch_applier.py`, `tests/unit/test_docker_runner.py`, `tests/unit/test_test_executor.py`, `tests/unit/test_verification.py`, `tests/integration/test_execution_*.py`).
+- **Documentation**: Execution sandbox technical specification in `docs/execution-sandbox.md`.
+
 ## [0.5.0] - 2026-11-21
 
 ### Added - Sprint 4: Code Generation Engine

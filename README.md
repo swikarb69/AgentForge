@@ -19,22 +19,23 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 4 — Code Generation Engine (Current Release: v0.5.0)**
+> **Sprint 5 — Execution & Verification Sandbox (Current Release: v0.6.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprints 0, 1, 2, 3 & 4**:
+> **Implemented in Sprints 0, 1, 2, 3, 4 & 5**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
 > - **Issue Context Pipeline**: High-level service (`IssueContextBuilder`) mapping software issue requirements directly to codebase files, symbols, and code chunks with explainable scoring breakdowns and unresolved reference tracking.
 > - **Planning Engine Subsystem**: Impact analysis, implementation task generation, requirement traceability, acceptance verification planning, dependency analysis & cycle detection, risk analysis, grounded assumption extraction, plan validation, and planning service (`backend/app/planning/`).
 > - **Code Generation Engine Subsystem**: Bounded source context extraction, replaceable provider interface (Mock & Gemini), versioned injection-resistant prompt templates (`v1.0`), structured code generator, patch validator with AST syntax checking, unified diff patch builder, and artifact storage (`backend/app/generation/`).
-> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`.
-> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) with >90% test coverage (156 passing tests).
+> - **Execution & Verification Sandbox Subsystem**: Ephemeral isolated workspace manager with sensitive file filtering and quotas, secure patch application with path traversal / protected file defenses, locked-down Docker runner with unprivileged non-root user `10001:10001`, dropped capabilities `ALL`, read-only rootfs, tmpfs, network isolation `none`, and strict No-Host-Fallback, test execution parser, and verification engine (`backend/app/execution/`).
+> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`.
+> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 214 passing tests.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: Sandbox execution runners, automated repair loops, security review agents, and GitHub PR creation are planned for Sprints 5–8.*
+> *Note: Automated repair loops, security review agents, and GitHub PR creation are planned for Sprints 6–8.*
 
 ---
 
@@ -128,6 +129,10 @@ AgentForge/
 │   ├── architecture.md
 │   ├── development-methodology.md
 │   ├── repository-intelligence.md
+│   ├── issue-intelligence.md
+│   ├── planning-engine.md
+│   ├── code-generation.md
+│   ├── execution-sandbox.md
 │   ├── security.md
 │   ├── testing.md
 │   ├── deployment.md
@@ -181,6 +186,12 @@ Endpoints:
 - Issue Context: `POST http://localhost:8000/api/v1/issues/context`
 - Create Plan: `POST http://localhost:8000/api/v1/planning/create`
 - Validate Plan: `POST http://localhost:8000/api/v1/planning/validate`
+- Generate Code & Patch: `POST http://localhost:8000/api/v1/generation/create`
+- Get Generation: `GET http://localhost:8000/api/v1/generation/{generation_id}`
+- Get Unified Patch: `GET http://localhost:8000/api/v1/generation/{generation_id}/patch`
+- Run Sandboxed Execution: `POST http://localhost:8000/api/v1/execution/create`
+- List Verification Reports: `GET http://localhost:8000/api/v1/execution/reports`
+- Get Verification Report: `GET http://localhost:8000/api/v1/execution/reports/{execution_id}`
 - OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
@@ -212,9 +223,9 @@ pytest --cov=backend/app --cov-report=term-missing
 - **Sprint 1 — Repository Intelligence** (COMPLETED): Scanner, AST parser, chunker, in-memory index, search API.
 - **Sprint 2 — Issue Intelligence** (COMPLETED): Issue parser, requirement extractor, reference extractor, issue matcher.
 - **Sprint 3 — Planning Engine** (COMPLETED): Impact analyzer, task generator, dependency graph, risk analyzer, plan validator.
-- **Sprint 4 — Context Synthesis & Coding Agent** (NEXT): Code RAG indexer and code generator.
-- **Sprint 5 — Execution Sandbox Engine**: Isolated Docker execution runner and resource caps.
-- **Sprint 6 — Test Generation & Automated Debugger**: Automated test creation & repair loop.
+- **Sprint 4 — Code Generation Engine** (COMPLETED): Source context builder, mock & Gemini providers, AST syntax validator, unified patch builder.
+- **Sprint 5 — Execution Sandbox Engine** (COMPLETED): Isolated workspace manager, secure patch applier, restricted Docker runner, test executor, verification engine.
+- **Sprint 6 — Test Generation & Automated Debugger** (NEXT): Automated test creation & repair loop.
 - **Sprint 7 — Security & Code Review Engine**: Secret scanner, prompt injection defender, code reviewer.
 - **Sprint 8 — GitHub Integration & PR Shipping**: Git branch creator, commit and PR generator.
 - **Sprint 9 — Evaluation & Benchmarks**: Benchmark evaluation suite and token/cost trackers.

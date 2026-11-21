@@ -1,5 +1,12 @@
 """AgentForge execution and verification subsystem."""
 
+from backend.app.execution.docker_runner import (
+    CLIDockerClient,
+    DockerClientInterface,
+    DockerExecutionOutput,
+    DockerRunner,
+    MockDockerClient,
+)
 from backend.app.execution.models import (
     CreateExecutionRequest,
     ExecutionPolicy,
@@ -13,19 +20,13 @@ from backend.app.execution.models import (
     VerificationReport,
     WorkspaceMetadata,
 )
-from backend.app.execution.docker_runner import (
-    CLIDockerClient,
-    DockerClientInterface,
-    DockerExecutionOutput,
-    DockerRunner,
-    MockDockerClient,
-)
 from backend.app.execution.patch_applier import PatchApplier
 from backend.app.execution.policy import (
     FORBIDDEN_SHELL_METACHARACTERS,
     PROFILE_COMMAND_MAP,
     ExecutionPolicyEnforcer,
 )
+from backend.app.execution.service import ExecutionService
 from backend.app.execution.test_executor import TestExecutor
 from backend.app.execution.verification import VerificationEngine
 from backend.app.execution.workspace import WorkspaceManager
@@ -40,6 +41,7 @@ __all__ = [
     "ExecutionPolicyEnforcer",
     "ExecutionRequest",
     "ExecutionResult",
+    "ExecutionService",
     "ExecutionStatus",
     "FORBIDDEN_SHELL_METACHARACTERS",
     "MockDockerClient",

@@ -2,7 +2,7 @@
 
 import asyncio
 import shutil
-import subprocess
+import subprocess  # nosec B404
 import time
 import uuid
 from abc import ABC, abstractmethod
@@ -74,7 +74,7 @@ class CLIDockerClient(DockerClientInterface):
         if not self.docker_binary:
             return False
         try:
-            res = subprocess.run(  # noqa: S603
+            res = subprocess.run(  # noqa: S603  # nosec B603
                 [self.docker_binary, "info"],
                 capture_output=True,
                 timeout=5,
@@ -103,7 +103,7 @@ class CLIDockerClient(DockerClientInterface):
             "ALL",
             "--read-only",
             "--tmpfs",
-            "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108
+            "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108  # nosec B108
             "--memory",
             policy.memory_limit,
             f"--cpus={policy.cpu_limit}",
@@ -137,7 +137,7 @@ class CLIDockerClient(DockerClientInterface):
         )
         start_time = time.monotonic()
         try:
-            proc = subprocess.run(  # noqa: S603
+            proc = subprocess.run(  # noqa: S603  # nosec B603
                 args,
                 capture_output=True,
                 text=True,

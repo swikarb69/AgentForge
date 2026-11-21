@@ -22,10 +22,10 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 4] Code Generation Engine (COMPLETED)
     │
     ▼
-[Sprint 5] Execution Sandbox Engine (NEXT)
+[Sprint 5] Execution Sandbox Engine (COMPLETED)
     │
     ▼
-[Sprint 6] Test Generation & Automated Debugger Loop
+[Sprint 6] Test Generation & Automated Debugger Loop (NEXT)
     │
     ▼
 [Sprint 7] Security & Senior Peer Code Review Engine
@@ -65,8 +65,8 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Deliverables**: Domain models (`GeneratedFileChange`, `PatchValidation`, `GenerationRequest`, `GenerationResult`, `CreateGenerationRequest`), Bounded Source Context Builder (`SourceContextBuilder`), Pluggable Provider Interface (`CodeGenerationProvider`, `MockCodeGenerationProvider`, `GeminiCodeGenerationProvider`), Versioned Prompt Engineering (`PROMPT_VERSION = v1.0`), Structured Code Generator (`CodeGenerator`), Patch Validator (`PatchValidator`), Patch & Diff Builder (`PatchBuilder`), Generation Service (`GenerationService`), REST APIs (`/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`), Integration Test Suite with Repository Immutability, Comprehensive Documentation.
 
 ### Sprint 5 — Execution Sandbox Engine
-- **Status**: PLANNED (NEXT)
-- **Deliverables**: Docker execution runner, resource limits enforcement (CPU, Memory, Timeout), network isolation, security command filter.
+- **Status**: **COMPLETED**
+- **Deliverables**: Execution Domain Models (`ExecutionStatus`, `ExecutionPolicy`, `ExecutionRequest`, `CommandResult`, `TestSummary`, `VerificationReport`), Security Policy Validator (`backend/app/execution/policy.py`), Isolated Ephemeral Workspace Manager with sensitive file filtering and quotas (`backend/app/execution/workspace.py`), Secure Patch Applier with traversal/protected path defenses and hash checks (`backend/app/execution/patch_applier.py`), Restricted Docker Runner with unprivileged non-root user `10001:10001`, dropped capabilities `ALL`, read-only rootfs, tmpfs, network isolation `none`, and strict No-Host-Fallback (`backend/app/execution/docker_runner.py`), Pytest and Ruff Test Executor (`backend/app/execution/test_executor.py`), Verification Engine & Report Persistence (`backend/app/execution/verification.py`), Execution Service Pipeline (`backend/app/execution/service.py`), REST APIs (`/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`), Unit, Integration & Security Test Suites, and Comprehensive Documentation (`docs/execution-sandbox.md`).
 
 ### Sprint 6 — Test Generation & Automated Debugger Loop
 - **Status**: PLANNED

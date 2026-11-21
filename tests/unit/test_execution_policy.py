@@ -105,9 +105,7 @@ def test_validate_command_denied_patterns() -> None:
         )
 
     with pytest.raises(ValueError, match="denied security pattern"):
-        ExecutionPolicyEnforcer.validate_command(
-            ["python", "-c", "rm -rf /"], policy
-        )
+        ExecutionPolicyEnforcer.validate_command(["python", "-c", "rm -rf /"], policy)
 
 
 def test_sanitize_environment_default() -> None:

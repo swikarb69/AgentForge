@@ -7,26 +7,28 @@ This document presents the technical architecture, core operational workflow, mo
 ## 1. System Implementation Status
 
 > [!IMPORTANT]
-> **Current Status**: **Sprint 4 — Code Generation Engine**
+> **Current Status**: **Sprint 5 — Execution & Verification Sandbox**
 >
-> - **IMPLEMENTED IN SPRINTS 0, 1, 2, 3 & 4**:
+> - **IMPLEMENTED IN SPRINTS 0, 1, 2, 3, 4 & 5**:
 >   - FastAPI core application & Pydantic configuration (`backend/app/main.py`, `backend/app/core/config.py`).
 >   - Repository Intelligence Subsystem (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 >   - Issue Intelligence Subsystem (`backend/app/issue/`): Parser, Requirement Extractor, Reference Extractor, Repository Matcher, Issue Context Pipeline.
 >   - Planning Engine Subsystem (`backend/app/planning/`): Impact Analyzer, Task Generator & Traceability, Dependency Analyzer & Cycle Detection, Risk Analyzer, Plan Validator, and Planning Service.
 >   - Code Generation Engine Subsystem (`backend/app/generation/`): Source Context Builder, Code Generator, Pluggable Providers (Mock & Gemini), Patch Validator, Patch Builder, and Generation Service.
->   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`.
+>   - Execution & Verification Sandbox Subsystem (`backend/app/execution/`): Execution Policy, Ephemeral Workspace Manager, Secure Patch Applier, Restricted Docker Runner, Test Executor, Verification Engine, and Execution Service.
+>   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`.
 >   - Baseline Sandbox Dockerfile and Security Policy JSON (`sandbox/`).
->   - Unit, Integration, & Pipeline Test Suites with comprehensive code coverage (90.14% coverage, 156 tests passing).
+>   - Unit, Integration, & Pipeline Test Suites with comprehensive code coverage (214 tests passing).
 >   - GitHub Actions CI Pipeline (`.github/workflows/ci.yml`).
 >
 > - **KEY ARCHITECTURAL PRINCIPLES**:
->   - Read-only target repository: Code proposals and patches are generated outside the target repository.
+>   - Read-only target repository: Target repository is never modified; patches apply to ephemeral isolated workspaces.
+>   - Strict No-Host-Fallback: Sandboxed execution runs strictly inside Docker containers; failure to run in Docker fails deterministically without running on host.
+>   - Non-root & dropped capabilities: Container runs as unprivileged UID/GID `10001:10001` with `cap_drop=["ALL"]`, read-only rootfs, and disabled network (`none`).
 >   - Plan-authorized scope: Only files and operations explicitly authorized by the `ImplementationPlan` are permitted.
 >   - Security checks: Absolute path traversal, symlink escapes, drive letters, and protected paths are rejected.
->   - Pluggable provider interface: Safe default mock provider for offline determinism and optional Gemini REST provider.
 >
-> - **PLANNED FOR FUTURE SPRINTS**: Execution Sandbox Engine (Sprint 5), Test Generation & Automated Debugger Loop (Sprint 6), Security & Code Review (Sprint 7), GitHub Integration & PR Shipping (Sprint 8).
+> - **PLANNED FOR FUTURE SPRINTS**: Test Generation & Automated Debugger Loop (Sprint 6), Security & Code Review (Sprint 7), GitHub Integration & PR Shipping (Sprint 8).
 
 ---
 
