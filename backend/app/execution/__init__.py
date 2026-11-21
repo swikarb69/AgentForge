@@ -26,6 +26,8 @@ from backend.app.execution.policy import (
     PROFILE_COMMAND_MAP,
     ExecutionPolicyEnforcer,
 )
+from backend.app.execution.test_executor import TestExecutor
+from backend.app.execution.verification import VerificationEngine
 from backend.app.execution.workspace import WorkspaceManager
 
 __all__ = [
@@ -45,7 +47,9 @@ __all__ = [
     "PatchApplier",
     "PatchApplicationResult",
     "ResourceUsage",
+    "TestExecutor",
     "TestSummary",
+    "VerificationEngine",
     "VerificationProfile",
     "VerificationReport",
     "WorkspaceManager",
