@@ -38,5 +38,25 @@ class Settings(BaseSettings):
     MAX_ISSUE_TITLE_LENGTH: int = 256
     MAX_ISSUE_DESCRIPTION_LENGTH: int = 65_536  # 64KB max issue text
 
+    # Code Generation Configuration
+    GENERATION_PROVIDER: str = "mock"
+    GENERATION_TIMEOUT: int = 60
+    MAX_CONTEXT_SIZE: int = 100_000
+    MAX_GENERATED_OUTPUT: int = 100_000
+    MAX_FILES_PER_REQUEST: int = 10
+    MAX_TASKS_PER_REQUEST: int = 20
+    GENERATION_ARTIFACT_DIR: str = "agentforge-artifacts/generation"
+    PROTECTED_PATHS: list[str] = [
+        ".env",
+        ".env.*",
+        "id_rsa",
+        "id_ed25519",
+        "*.pem",
+        "*.key",
+        "secrets.json",
+        "credentials.json",
+    ]
+    GENERATION_RETRY_LIMIT: int = 2
+
 
 settings = Settings()
