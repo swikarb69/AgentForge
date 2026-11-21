@@ -13,6 +13,13 @@ from backend.app.execution.models import (
     VerificationReport,
     WorkspaceMetadata,
 )
+from backend.app.execution.docker_runner import (
+    CLIDockerClient,
+    DockerClientInterface,
+    DockerExecutionOutput,
+    DockerRunner,
+    MockDockerClient,
+)
 from backend.app.execution.patch_applier import PatchApplier
 from backend.app.execution.policy import (
     FORBIDDEN_SHELL_METACHARACTERS,
@@ -22,13 +29,18 @@ from backend.app.execution.policy import (
 from backend.app.execution.workspace import WorkspaceManager
 
 __all__ = [
+    "CLIDockerClient",
     "CreateExecutionRequest",
+    "DockerClientInterface",
+    "DockerExecutionOutput",
+    "DockerRunner",
     "ExecutionPolicy",
     "ExecutionPolicyEnforcer",
     "ExecutionRequest",
     "ExecutionResult",
     "ExecutionStatus",
     "FORBIDDEN_SHELL_METACHARACTERS",
+    "MockDockerClient",
     "PROFILE_COMMAND_MAP",
     "PatchApplier",
     "PatchApplicationResult",
