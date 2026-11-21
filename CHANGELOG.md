@@ -5,6 +5,19 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-10-29
+
+### Added - Sprint 3: Planning Engine
+- **Planning Domain Models**: Strongly typed Pydantic models for `ImplementationPlan`, `PlanTask`, `FileChange`, `SymbolChange`, `TestPlan`, `Dependency`, `Risk`, `Assumption`, and `PlanValidation` (`backend/app/planning/models.py`).
+- **Change Impact Analyzer**: Deterministic identification of directly and indirectly affected files, symbols, test files, and new files (`backend/app/planning/impact.py`).
+- **Task Generator & Traceability**: Bidirectional mapping connecting requirements to tasks and acceptance criteria to concrete verification cases with deterministic execution ordering (`backend/app/planning/tasks.py`).
+- **Dependency & Risk Analysis**: Task dependency graph construction with DFS-based cycle detection and architectural risk evaluation with severity rating and actionable mitigations (`backend/app/planning/dependencies.py`, `backend/app/planning/risks.py`).
+- **Deterministic Plan Validator**: Complete structural, traceability, dependency cycle, repository existence, and ambiguity validation engine (`backend/app/planning/validator.py`).
+- **Planning Engine Service**: High-level orchestrator connecting `IssueContext` to `ImplementationPlan` (`backend/app/planning/service.py`).
+- **Planning REST API**: Endpoints exposing `POST /api/v1/planning/create` and `POST /api/v1/planning/validate` (`backend/app/api/routes/planning.py`).
+- **Fixtures & Tests**: Realistic planning fixture scenarios (`agentforge-fixtures/plans/`) and comprehensive unit & integration test suite (`tests/unit/test_*.py`, `tests/integration/test_planning_pipeline.py`).
+- **Documentation**: Comprehensive planning engine specification in `docs/planning-engine.md`.
+
 ## [0.3.0] - 2026-10-09
 
 ### Added - Sprint 2: Issue Intelligence

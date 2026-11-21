@@ -16,10 +16,10 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 2] Issue Intelligence (COMPLETED)
     │
     ▼
-[Sprint 3] Implementation Planning Agent (NEXT)
+[Sprint 3] Implementation Planning Agent (COMPLETED)
     │
     ▼
-[Sprint 4] Context Synthesis & Coding Agent
+[Sprint 4] Context Synthesis & Coding Agent (NEXT)
     │
     ▼
 [Sprint 5] Execution Sandbox Engine
@@ -56,12 +56,12 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Status**: **COMPLETED**
 - **Deliverables**: Issue Parser, Requirement Extractor, Acceptance Criteria Extractor, Reference & Endpoint Extractor, Repository-Aware Matcher, Issue Context Builder Service, Issues REST API (`/api/v1/issues/analyze`, `/api/v1/issues/context`), Sample Fixture Issues, Integration Test Suite.
 
-### Sprint 3 — Planning Agent
-- **Status**: PLANNED
-- **Deliverables**: Implementation plan generator, minimal touch-set file isolator, step-by-step diff planner, risk scorer.
+### Sprint 3 — Planning Engine
+- **Status**: **COMPLETED**
+- **Deliverables**: Domain models (`ImplementationPlan`, `PlanTask`, `FileChange`, `SymbolChange`, `TestPlan`, `Dependency`, `Risk`, `Assumption`, `PlanValidation`), Change Impact Analyzer, Task Generator with requirement traceability, Dependency Analyzer with cycle detection, Risk Analyzer, Deterministic Plan Validator, Planning Service Pipeline, REST APIs (`/api/v1/planning/create`, `/api/v1/planning/validate`), Planning Fixtures, Integration Test Suite, Comprehensive Documentation.
 
 ### Sprint 4 — Context Synthesis & Coding Agent
-- **Status**: PLANNED
+- **Status**: PLANNED (NEXT)
 - **Deliverables**: RAG vector indexer, context chunk retrieval, LLM code synthesizer, patch/diff generator.
 
 ### Sprint 5 — Execution Sandbox Engine
