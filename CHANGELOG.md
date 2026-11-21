@@ -5,6 +5,20 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-21
+
+### Added - Sprint 4: Code Generation Engine
+- **Generation Domain Models**: Strongly typed Pydantic models for `GeneratedFileChange`, `PatchValidation`, `GenerationRequest`, `GenerationResult`, `CreateGenerationRequest`, `FileContext`, and `SourceContext` (`backend/app/generation/models.py`).
+- **Bounded Source Context Builder**: Source context gathering (`backend/app/generation/context.py`) enforcing target file authorization, SHA256 baseline hashing, size bounds (`MAX_CONTEXT_SIZE`), symlink escape rejection, and protected path safeguards.
+- **Pluggable Provider Interface**: Abstract provider contract (`CodeGenerationProvider`) with default offline deterministic mock provider (`MockCodeGenerationProvider`) and optional Gemini REST integration (`GeminiCodeGenerationProvider`) (`backend/app/generation/provider.py`).
+- **Versioned Prompt Engineering**: Versioned prompt builder (`PROMPT_VERSION = v1.0`) with prompt-injection delimiters and JSON schema response contract (`backend/app/generation/prompts.py`).
+- **Structured Code Generator**: High-level generator (`CodeGenerator`) orchestrating context and provider, verifying proposal boundaries and task/requirement mappings (`backend/app/generation/generator.py`).
+- **Patch Validator**: Validation engine (`PatchValidator`) verifying plan authorization, path safety, and running AST syntax parsing on proposed Python code (`backend/app/generation/validator.py`).
+- **Unified Diff Patch Builder & Artifact Management**: Clean unified diff generation (`a/path` vs `b/path`, `/dev/null` for creations) and artifact persistence in `agentforge-artifacts/generation/` strictly outside the target repository (`backend/app/generation/patch.py`).
+- **Generation Service & REST APIs**: Endpoints exposing `POST /api/v1/generation/create`, `GET /api/v1/generation/{generation_id}`, and `GET /api/v1/generation/{generation_id}/patch` (`backend/app/api/routes/generation.py`).
+- **Tests & Immutability Suite**: Unit and integration test suite with 156 passing tests, 90.14% coverage, and verification of zero target repository mutations (`tests/unit/test_generation_*.py`, `tests/unit/test_generator.py`, `tests/unit/test_patch_*.py`, `tests/integration/test_generation_pipeline.py`).
+- **Documentation**: Technical specifications in `docs/code-generation.md`.
+
 ## [0.4.0] - 2026-10-29
 
 ### Added - Sprint 3: Planning Engine

@@ -7,24 +7,26 @@ This document presents the technical architecture, core operational workflow, mo
 ## 1. System Implementation Status
 
 > [!IMPORTANT]
-> **Current Status**: **Sprint 3 — Planning Engine**
+> **Current Status**: **Sprint 4 — Code Generation Engine**
 >
-> - **IMPLEMENTED IN SPRINT 0, 1, 2 & 3**:
+> - **IMPLEMENTED IN SPRINTS 0, 1, 2, 3 & 4**:
 >   - FastAPI core application & Pydantic configuration (`backend/app/main.py`, `backend/app/core/config.py`).
 >   - Repository Intelligence Subsystem (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 >   - Issue Intelligence Subsystem (`backend/app/issue/`): Parser, Requirement Extractor, Reference Extractor, Repository Matcher, Issue Context Pipeline.
 >   - Planning Engine Subsystem (`backend/app/planning/`): Impact Analyzer, Task Generator & Traceability, Dependency Analyzer & Cycle Detection, Risk Analyzer, Plan Validator, and Planning Service.
->   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`.
+>   - Code Generation Engine Subsystem (`backend/app/generation/`): Source Context Builder, Code Generator, Pluggable Providers (Mock & Gemini), Patch Validator, Patch Builder, and Generation Service.
+>   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`.
 >   - Baseline Sandbox Dockerfile and Security Policy JSON (`sandbox/`).
->   - Unit, Integration, & Pipeline Test Suites with comprehensive code coverage (`tests/`).
+>   - Unit, Integration, & Pipeline Test Suites with comprehensive code coverage (90.14% coverage, 156 tests passing).
 >   - GitHub Actions CI Pipeline (`.github/workflows/ci.yml`).
 >
 > - **KEY ARCHITECTURAL PRINCIPLES**:
->   - Sprint 3 is completely deterministic.
->   - No LLM is currently involved.
->   - No target repository source code is modified.
+>   - Read-only target repository: Code proposals and patches are generated outside the target repository.
+>   - Plan-authorized scope: Only files and operations explicitly authorized by the `ImplementationPlan` are permitted.
+>   - Security checks: Absolute path traversal, symlink escapes, drive letters, and protected paths are rejected.
+>   - Pluggable provider interface: Safe default mock provider for offline determinism and optional Gemini REST provider.
 >
-> - **PLANNED FOR FUTURE SPRINTS**: AI Agent orchestration, LLM Planner, Coder Agent, RAG retrieval augmentation, GitHub API integration, Docker sandbox runtime isolation, automated repair loop, and developer UI dashboard.
+> - **PLANNED FOR FUTURE SPRINTS**: Execution Sandbox Engine (Sprint 5), Test Generation & Automated Debugger Loop (Sprint 6), Security & Code Review (Sprint 7), GitHub Integration & PR Shipping (Sprint 8).
 
 ---
 

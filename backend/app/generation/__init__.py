@@ -23,6 +23,7 @@ from backend.app.generation.provider import (
     MockCodeGenerationProvider,
     get_provider,
 )
+from backend.app.generation.service import GenerationService
 from backend.app.generation.validator import PatchValidator
 
 __all__ = [
@@ -35,6 +36,7 @@ __all__ = [
     "GeneratedFileChange",
     "GenerationRequest",
     "GenerationResult",
+    "GenerationService",
     "GenerationStatus",
     "MockCodeGenerationProvider",
     "PatchBuilder",

@@ -177,16 +177,32 @@ class MockCodeGenerationProvider(CodeGenerationProvider):
         # If verify_token is present in auth.py, add expired token validation logic
         if "def verify_token" in original_code:
             if "expired" not in original_code.lower():
-                replacement = (
-                    "def verify_token(token: str):\n"
-                    '    """Validate token and check expiry."""\n'
-                    '    if token == "expired":\n'
-                    "        return False"
-                )
-                return original_code.replace(
-                    "def verify_token(token: str):",
-                    replacement,
-                )
+                if "def verify_token(self, token: str)" in original_code:
+                    replacement = (
+                        "def verify_token(self, token: str) -> bool:\n"
+                        '        """Validate token and check expiry."""\n'
+                        '        if token == "expired":\n'
+                        "            return False"
+                    )
+                    target_str = (
+                        "def verify_token(self, token: str) -> bool:\n"
+                        '        """Verify user authentication token."""'
+                    )
+                    return original_code.replace(
+                        target_str,
+                        replacement,
+                    )
+                if "def verify_token(token: str):" in original_code:
+                    replacement = (
+                        "def verify_token(token: str):\n"
+                        '    """Validate token and check expiry."""\n'
+                        '    if token == "expired":\n'
+                        "        return False"
+                    )
+                    return original_code.replace(
+                        "def verify_token(token: str):",
+                        replacement,
+                    )
         # Default modification: append structured patch comment
         banner = f"\n# [AgentForge Proposed Modification]: {plan_objective}\n"
         if banner not in original_code:

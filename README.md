@@ -19,21 +19,22 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 3 — Planning Engine (Current Release: v0.4.0)**
+> **Sprint 4 — Code Generation Engine (Current Release: v0.5.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprint 0, 1, 2 & 3**:
+> **Implemented in Sprints 0, 1, 2, 3 & 4**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
 > - **Issue Context Pipeline**: High-level service (`IssueContextBuilder`) mapping software issue requirements directly to codebase files, symbols, and code chunks with explainable scoring breakdowns and unresolved reference tracking.
 > - **Planning Engine Subsystem**: Impact analysis, implementation task generation, requirement traceability, acceptance verification planning, dependency analysis & cycle detection, risk analysis, grounded assumption extraction, plan validation, and planning service (`backend/app/planning/`).
-> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`.
-> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) with comprehensive test coverage.
+> - **Code Generation Engine Subsystem**: Bounded source context extraction, replaceable provider interface (Mock & Gemini), versioned injection-resistant prompt templates (`v1.0`), structured code generator, patch validator with AST syntax checking, unified diff patch builder, and artifact storage (`backend/app/generation/`).
+> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`.
+> - **Testing Architecture**: Pytest unit, integration, and pipeline test suite (`tests/`) with >90% test coverage (156 passing tests).
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: AI Agent orchestration with LLM planners, code generation, container sandbox execution runners, automated debugging repair loops, and GitHub PR creation are planned for Sprints 4–8.*
+> *Note: Sandbox execution runners, automated repair loops, security review agents, and GitHub PR creation are planned for Sprints 5–8.*
 
 ---
 

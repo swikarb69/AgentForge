@@ -19,10 +19,10 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 3] Implementation Planning Agent (COMPLETED)
     │
     ▼
-[Sprint 4] Context Synthesis & Coding Agent (NEXT)
+[Sprint 4] Code Generation Engine (COMPLETED)
     │
     ▼
-[Sprint 5] Execution Sandbox Engine
+[Sprint 5] Execution Sandbox Engine (NEXT)
     │
     ▼
 [Sprint 6] Test Generation & Automated Debugger Loop
@@ -60,12 +60,12 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Status**: **COMPLETED**
 - **Deliverables**: Domain models (`ImplementationPlan`, `PlanTask`, `FileChange`, `SymbolChange`, `TestPlan`, `Dependency`, `Risk`, `Assumption`, `PlanValidation`), Change Impact Analyzer, Task Generator with requirement traceability, Dependency Analyzer with cycle detection, Risk Analyzer, Deterministic Plan Validator, Planning Service Pipeline, REST APIs (`/api/v1/planning/create`, `/api/v1/planning/validate`), Planning Fixtures, Integration Test Suite, Comprehensive Documentation.
 
-### Sprint 4 — Context Synthesis & Coding Agent
-- **Status**: PLANNED (NEXT)
-- **Deliverables**: RAG vector indexer, context chunk retrieval, LLM code synthesizer, patch/diff generator.
+### Sprint 4 — Code Generation Engine
+- **Status**: **COMPLETED**
+- **Deliverables**: Domain models (`GeneratedFileChange`, `PatchValidation`, `GenerationRequest`, `GenerationResult`, `CreateGenerationRequest`), Bounded Source Context Builder (`SourceContextBuilder`), Pluggable Provider Interface (`CodeGenerationProvider`, `MockCodeGenerationProvider`, `GeminiCodeGenerationProvider`), Versioned Prompt Engineering (`PROMPT_VERSION = v1.0`), Structured Code Generator (`CodeGenerator`), Patch Validator (`PatchValidator`), Patch & Diff Builder (`PatchBuilder`), Generation Service (`GenerationService`), REST APIs (`/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`), Integration Test Suite with Repository Immutability, Comprehensive Documentation.
 
 ### Sprint 5 — Execution Sandbox Engine
-- **Status**: PLANNED
+- **Status**: PLANNED (NEXT)
 - **Deliverables**: Docker execution runner, resource limits enforcement (CPU, Memory, Timeout), network isolation, security command filter.
 
 ### Sprint 6 — Test Generation & Automated Debugger Loop
