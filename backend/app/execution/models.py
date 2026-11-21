@@ -238,6 +238,28 @@ class ExecutionResult(BaseModel):
     )
 
 
+class PatchApplicationResult(BaseModel):
+    """Result of applying code changes or patch to an isolated workspace."""
+
+    success: bool = Field(description="True if all changes were applied cleanly")
+    applied_files: list[str] = Field(
+        default_factory=list,
+        description="Repository-relative paths modified or created",
+    )
+    created_files: list[str] = Field(
+        default_factory=list, description="New files created by patch"
+    )
+    modified_files: list[str] = Field(
+        default_factory=list, description="Existing files modified by patch"
+    )
+    errors: list[str] = Field(
+        default_factory=list, description="Errors encountered during application"
+    )
+    warnings: list[str] = Field(
+        default_factory=list, description="Warnings encountered during application"
+    )
+
+
 class VerificationReport(BaseModel):
     """High-level verification report synthesizing sandbox outcomes."""
 

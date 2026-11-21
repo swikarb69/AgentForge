@@ -6,12 +6,14 @@ from backend.app.execution.models import (
     ExecutionRequest,
     ExecutionResult,
     ExecutionStatus,
+    PatchApplicationResult,
     ResourceUsage,
     TestSummary,
     VerificationProfile,
     VerificationReport,
     WorkspaceMetadata,
 )
+from backend.app.execution.patch_applier import PatchApplier
 from backend.app.execution.policy import (
     FORBIDDEN_SHELL_METACHARACTERS,
     PROFILE_COMMAND_MAP,
@@ -28,6 +30,8 @@ __all__ = [
     "ExecutionStatus",
     "FORBIDDEN_SHELL_METACHARACTERS",
     "PROFILE_COMMAND_MAP",
+    "PatchApplier",
+    "PatchApplicationResult",
     "ResourceUsage",
     "TestSummary",
     "VerificationProfile",
