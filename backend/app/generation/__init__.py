@@ -1,6 +1,7 @@
 """Code Generation Engine package for AgentForge."""
 
 from backend.app.generation.context import SourceContextBuilder
+from backend.app.generation.generator import CodeGenerator
 from backend.app.generation.models import (
     CreateGenerationRequest,
     FileContext,
@@ -11,6 +12,10 @@ from backend.app.generation.models import (
     PatchValidation,
     SourceContext,
 )
+from backend.app.generation.prompts import (
+    PROMPT_VERSION,
+    build_generation_prompt,
+)
 from backend.app.generation.provider import (
     CodeGenerationProvider,
     GeminiCodeGenerationProvider,
@@ -19,7 +24,9 @@ from backend.app.generation.provider import (
 )
 
 __all__ = [
+    "PROMPT_VERSION",
     "CodeGenerationProvider",
+    "CodeGenerator",
     "CreateGenerationRequest",
     "FileContext",
     "GeminiCodeGenerationProvider",
@@ -31,5 +38,6 @@ __all__ = [
     "PatchValidation",
     "SourceContext",
     "SourceContextBuilder",
+    "build_generation_prompt",
     "get_provider",
 ]
