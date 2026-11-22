@@ -41,7 +41,7 @@ class FindingConfidence(StrEnum):
 
 
 class ReviewStatus(StrEnum):
-    """Lifecycle status of a code review execution."""
+    """Lifecycle status and gating verdict of a code review execution."""
 
     PENDING = "pending"
     ANALYZING = "analyzing"
@@ -49,6 +49,9 @@ class ReviewStatus(StrEnum):
     COMPLETED_WITH_WARNINGS = "completed_with_warnings"
     FAILED = "failed"
     BLOCKED = "blocked"
+    REQUIRES_CHANGES = "requires_changes"
+    APPROVED_WITH_COMMENTS = "approved_with_comments"
+    APPROVED = "approved"
 
 
 class ReviewScope(StrEnum):
@@ -319,6 +322,22 @@ class ReviewSummary(BaseModel):
     high_risk_findings: int = Field(
         default=0, ge=0, description="Count of high severity findings"
     )
+    critical_count: int = Field(
+        default=0, ge=0, description="Count of critical severity findings"
+    )
+    high_count: int = Field(
+        default=0, ge=0, description="Count of high severity findings"
+    )
+    medium_count: int = Field(
+        default=0, ge=0, description="Count of medium severity findings"
+    )
+    low_count: int = Field(
+        default=0, ge=0, description="Count of low severity findings"
+    )
+    requires_human_review: bool = Field(
+        default=False,
+        description="True if human intervention or approval is required",
+    )
     review_status: ReviewStatus = Field(
         default=ReviewStatus.PENDING, description="Overall review status"
     )
@@ -353,12 +372,25 @@ class ReviewReport(BaseModel):
     status: ReviewStatus = Field(
         default=ReviewStatus.PENDING, description="Review execution status"
     )
+    review_scope: ReviewScope = Field(
+        default=ReviewScope.PATCH_ONLY, description="Review scope"
+    )
+    configuration: ReviewConfiguration = Field(
+        default_factory=ReviewConfiguration,
+        description="Configuration used for review",
+    )
     summary: ReviewSummary = Field(
         default_factory=ReviewSummary,
         description="Aggregate metrics and gating summary",
     )
     findings: list[ReviewFinding] = Field(
         default_factory=list, description="Ordered list of review findings"
+    )
+    blockers: list[str] = Field(
+        default_factory=list, description="List of blocking issue descriptions"
+    )
+    recommendations: list[str] = Field(
+        default_factory=list, description="Actionable recommendations"
     )
     analysis_metadata: dict[str, Any] = Field(
         default_factory=dict, description="Metadata on analyzers executed and runtimes"
@@ -370,4 +402,10 @@ class ReviewReport(BaseModel):
     generated_at: str = Field(
         default_factory=lambda: datetime.now(UTC).isoformat(),
         description="ISO 8601 generation timestamp",
+    )
+    completed_at: str | None = Field(
+        default=None, description="ISO 8601 completion timestamp"
+    )
+    duration_ms: float = Field(
+        default=0.0, ge=0.0, description="Total review duration in milliseconds"
     )

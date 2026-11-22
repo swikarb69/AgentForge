@@ -1,6 +1,8 @@
 """Code Review and Quality Assurance subsystem for AgentForge."""
 
+from backend.app.review.aggregator import ReviewAggregator
 from backend.app.review.architecture_analyzer import ArchitectureAnalyzer
+from backend.app.review.evidence import EvidenceCollector
 from backend.app.review.exceptions import (
     ArtifactNotFoundError,
     DuplicateRuleError,
@@ -41,10 +43,12 @@ __all__ = [
     "CodeEvidence",
     "DeterministicStaticAnalyzer",
     "DuplicateRuleError",
+    "EvidenceCollector",
     "FindingCategory",
     "FindingConfidence",
     "FindingSeverity",
     "RegressionAnalyzer",
+    "ReviewAggregator",
     "ReviewConfiguration",
     "ReviewError",
     "ReviewFinding",
