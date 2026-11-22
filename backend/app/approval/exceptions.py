@@ -39,3 +39,15 @@ class ArtifactMismatchError(ApprovalError):
 
 class UnauthorizedApproverError(ApprovalError):
     """Raised when an actor lacks the required role or permission to approve."""
+
+
+class IdentityVerificationError(ApprovalError):
+    """Raised when actor credentials or identity cannot be authenticated."""
+
+
+class RepositoryPermissionError(ApprovalError):
+    """Raised when actor lacks required repository-level permissions."""
+
+
+class ConflictingDecisionError(ApprovalError):
+    """Raised when an actor submits duplicate or conflicting decisions."""

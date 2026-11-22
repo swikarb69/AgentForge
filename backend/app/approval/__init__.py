@@ -1,5 +1,9 @@
 """Approval subsystem for AgentForge human approval and controlled release."""
 
+from backend.app.approval.authorization import (
+    AuthorizationDecision,
+    AuthorizationEngine,
+)
 from backend.app.approval.exceptions import (
     ApprovalError,
     ApprovalExpiredError,
@@ -8,9 +12,20 @@ from backend.app.approval.exceptions import (
     ApprovalRevokedError,
     ApprovalValidationError,
     ArtifactMismatchError,
+    ConflictingDecisionError,
+    IdentityVerificationError,
     InvalidStateTransitionError,
+    RepositoryPermissionError,
     SeparationOfDutiesError,
     UnauthorizedApproverError,
+)
+from backend.app.approval.identity import (
+    PERMISSION_HIERARCHY,
+    IdentityProvider,
+    LocalTestIdentityProvider,
+    ProductionIdentityProvider,
+    RepositoryPermission,
+    UserIdentity,
 )
 from backend.app.approval.models import (
     ApprovalAuditEvent,
@@ -53,11 +68,22 @@ __all__ = [
     "ApprovalValidationError",
     "ArtifactBinding",
     "ArtifactMismatchError",
+    "AuthorizationDecision",
+    "AuthorizationEngine",
+    "ConflictingDecisionError",
     "DecisionOutcome",
+    "IdentityProvider",
+    "IdentityVerificationError",
     "InvalidStateTransitionError",
+    "LocalTestIdentityProvider",
+    "PERMISSION_HIERARCHY",
     "PolicyEvaluationResult",
+    "ProductionIdentityProvider",
+    "RepositoryPermission",
+    "RepositoryPermissionError",
     "SeparationOfDutiesError",
     "UnauthorizedApproverError",
+    "UserIdentity",
     "evaluate_risk_level_from_review",
     "get_critical_policy",
     "get_default_policy",
