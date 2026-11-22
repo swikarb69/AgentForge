@@ -56,6 +56,12 @@ from backend.app.approval.policies import (
     get_low_risk_policy,
     policy_for_risk_level,
 )
+from backend.app.approval.readiness import (
+    ReadinessCheck,
+    ReadinessStatus,
+    ReleaseReadinessEngine,
+    ReleaseReadinessReport,
+)
 from backend.app.approval.request_service import ApprovalRequestService
 from backend.app.approval.state_machine import ApprovalStateMachine
 
@@ -94,6 +100,10 @@ __all__ = [
     "PERMISSION_HIERARCHY",
     "PolicyEvaluationResult",
     "ProductionIdentityProvider",
+    "ReadinessCheck",
+    "ReadinessStatus",
+    "ReleaseReadinessEngine",
+    "ReleaseReadinessReport",
     "RepositoryPermission",
     "RepositoryPermissionError",
     "SeparationOfDutiesError",
