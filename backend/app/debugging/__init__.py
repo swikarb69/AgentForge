@@ -21,6 +21,7 @@ from backend.app.debugging.models import (
     RootCauseType,
     StateTransition,
 )
+from backend.app.debugging.repair_engine import RepairProposalEngine
 from backend.app.debugging.repair_strategy import RepairStrategyEngine
 from backend.app.debugging.root_cause_analyzer import RootCauseAnalyzer
 from backend.app.debugging.state_machine import (
@@ -40,6 +41,7 @@ __all__ = [
     "RepairEvaluation",
     "RepairEvaluationVerdict",
     "RepairProposal",
+    "RepairProposalEngine",
     "RepairRequest",
     "RepairResult",
     "RepairState",
