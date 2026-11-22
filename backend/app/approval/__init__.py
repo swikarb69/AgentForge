@@ -1,0 +1,67 @@
+"""Approval subsystem for AgentForge human approval and controlled release."""
+
+from backend.app.approval.exceptions import (
+    ApprovalError,
+    ApprovalExpiredError,
+    ApprovalNotFoundError,
+    ApprovalPolicyViolationError,
+    ApprovalRevokedError,
+    ApprovalValidationError,
+    ArtifactMismatchError,
+    InvalidStateTransitionError,
+    SeparationOfDutiesError,
+    UnauthorizedApproverError,
+)
+from backend.app.approval.models import (
+    ApprovalAuditEvent,
+    ApprovalDecision,
+    ApprovalPolicy,
+    ApprovalRequest,
+    ApprovalRiskLevel,
+    ApprovalRole,
+    ApprovalStatus,
+    ArtifactBinding,
+    DecisionOutcome,
+)
+from backend.app.approval.policies import (
+    ApprovalPolicyEvaluator,
+    PolicyEvaluationResult,
+    evaluate_risk_level_from_review,
+    get_critical_policy,
+    get_default_policy,
+    get_high_risk_policy,
+    get_low_risk_policy,
+    policy_for_risk_level,
+)
+from backend.app.approval.state_machine import ApprovalStateMachine
+
+__all__ = [
+    "ApprovalAuditEvent",
+    "ApprovalDecision",
+    "ApprovalError",
+    "ApprovalExpiredError",
+    "ApprovalNotFoundError",
+    "ApprovalPolicy",
+    "ApprovalPolicyEvaluator",
+    "ApprovalPolicyViolationError",
+    "ApprovalRequest",
+    "ApprovalRevokedError",
+    "ApprovalRiskLevel",
+    "ApprovalRole",
+    "ApprovalStateMachine",
+    "ApprovalStatus",
+    "ApprovalValidationError",
+    "ArtifactBinding",
+    "ArtifactMismatchError",
+    "DecisionOutcome",
+    "InvalidStateTransitionError",
+    "PolicyEvaluationResult",
+    "SeparationOfDutiesError",
+    "UnauthorizedApproverError",
+    "evaluate_risk_level_from_review",
+    "get_critical_policy",
+    "get_default_policy",
+    "get_high_risk_policy",
+    "get_low_risk_policy",
+    "policy_for_risk_level",
+]
