@@ -25,11 +25,17 @@ from backend.app.review.models import (
 )
 from backend.app.review.registry import RuleRegistry, get_default_registry
 from backend.app.review.rules import BUILTIN_RULES, ReviewRule
+from backend.app.review.static_analyzer import (
+    DeterministicStaticAnalyzer,
+    compute_content_hash,
+    extract_code_excerpt,
+)
 
 __all__ = [
     "ArtifactNotFoundError",
     "BUILTIN_RULES",
     "CodeEvidence",
+    "DeterministicStaticAnalyzer",
     "DuplicateRuleError",
     "FindingCategory",
     "FindingConfidence",
@@ -48,6 +54,8 @@ __all__ = [
     "RuleNotFoundError",
     "RuleRegistry",
     "RuleRegistryError",
+    "compute_content_hash",
+    "extract_code_excerpt",
     "get_default_registry",
     "redact_secrets",
 ]
