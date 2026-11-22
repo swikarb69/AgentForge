@@ -72,5 +72,15 @@ class Settings(BaseSettings):
     ]
     GENERATION_RETRY_LIMIT: int = 2
 
+    # Debugging & Automatic Repair Configuration (Sprint 6)
+    DEBUGGING_ENABLED: bool = True
+    DEBUGGING_MAX_ATTEMPTS: int = 3
+    DEBUGGING_MAX_ATTEMPTS_LIMIT: int = 5
+    DEBUGGING_ALLOW_PROVIDER_DIAGNOSIS: bool = False
+    DEBUGGING_AUTO_EXECUTE_REPAIRS: bool = True
+    DEBUGGING_MAX_EVIDENCE_BYTES: int = 100_000
+    DEBUGGING_MAX_TRACEBACK_LINES: int = 50
+    DEBUGGING_REQUIRE_APPROVAL_FOR_HIGH_RISK: bool = True
+
 
 settings = Settings()

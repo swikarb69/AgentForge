@@ -15,6 +15,14 @@ def test_default_settings() -> None:
     assert settings.SANDBOX_TIMEOUT == 30
     assert settings.SANDBOX_MEMORY_LIMIT == "512m"
     assert settings.SANDBOX_CPU_LIMIT == 1
+    assert settings.DEBUGGING_ENABLED is True
+    assert settings.DEBUGGING_MAX_ATTEMPTS == 3
+    assert settings.DEBUGGING_MAX_ATTEMPTS_LIMIT == 5
+    assert settings.DEBUGGING_ALLOW_PROVIDER_DIAGNOSIS is False
+    assert settings.DEBUGGING_AUTO_EXECUTE_REPAIRS is True
+    assert settings.DEBUGGING_MAX_EVIDENCE_BYTES == 100_000
+    assert settings.DEBUGGING_MAX_TRACEBACK_LINES == 50
+    assert settings.DEBUGGING_REQUIRE_APPROVAL_FOR_HIGH_RISK is True
 
 
 def test_missing_optional_credentials() -> None:
