@@ -158,7 +158,6 @@ class RepairStrategyEngine:
                     "invocations."
                 ),
                 target_files=target_files,
-
                 target_symbols=target_symbols,
                 expected_changes=["Update function signature and callers"],
                 risk_level=RiskLevel.MEDIUM,

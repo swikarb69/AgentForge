@@ -1,5 +1,6 @@
 """Debugging and Automatic Repair Engine module."""
 
+from backend.app.debugging.evaluation import RepairEvaluator
 from backend.app.debugging.evidence_collector import DiagnosticEvidenceCollector
 from backend.app.debugging.failure_classifier import FailureClassifier
 from backend.app.debugging.models import (
@@ -40,6 +41,7 @@ __all__ = [
     "RepairConfiguration",
     "RepairEvaluation",
     "RepairEvaluationVerdict",
+    "RepairEvaluator",
     "RepairProposal",
     "RepairProposalEngine",
     "RepairRequest",

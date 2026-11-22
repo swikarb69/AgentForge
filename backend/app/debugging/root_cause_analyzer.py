@@ -170,7 +170,6 @@ class RootCauseAnalyzer:
 
         # 10. Test failures: distinguish assertion failure vs unhandled exception
         if classification.category == FailureCategory.TEST_FAILURE:
-
             combined_errs = " ".join(
                 evidence.error_messages + classification.error_messages
             )
