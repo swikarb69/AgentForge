@@ -139,6 +139,26 @@ class ReviewConfiguration(BaseModel):
         default=True,
         description="Require explicit human review if any high-severity finding exists",
     )
+    enable_static_analysis: bool = Field(
+        default=True,
+        description="Enable deterministic AST and static analysis rules",
+    )
+    enable_security_analysis: bool = Field(
+        default=True,
+        description="Enable security vulnerability pattern detection",
+    )
+    enable_architecture_analysis: bool = Field(
+        default=True,
+        description="Enable architecture and dependency boundary analysis",
+    )
+    enable_regression_analysis: bool = Field(
+        default=True,
+        description="Enable regression and plan compliance analysis",
+    )
+    ignored_paths: list[str] = Field(
+        default_factory=list,
+        description="Glob patterns of files and directories to ignore",
+    )
 
 
 class ReviewRequest(BaseModel):

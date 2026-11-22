@@ -22,6 +22,9 @@ class ReviewAggregator:
     determines approval gating.
     """
 
+    def __init__(self, evidence_collector: Any | None = None) -> None:
+        self.evidence_collector = evidence_collector
+
     @classmethod
     def aggregate(
         cls,
@@ -34,6 +37,7 @@ class ReviewAggregator:
         reviewed_artifacts: dict[str, str | None] | None = None,
         start_time: float | None = None,
         repository_info: dict[str, Any] | None = None,
+        analyzers_run: list[str] | None = None,
     ) -> ReviewReport:
         """Synthesize findings into an auditable ReviewReport with gating verdicts."""
         eff_review_id = review_id or f"rev-{uuid.uuid4().hex[:8]}"
@@ -138,7 +142,8 @@ class ReviewAggregator:
             blockers=blockers,
             recommendations=recommendations,
             analysis_metadata={
-                "analyzers": [
+                "analyzers": analyzers_run
+                or [
                     "DeterministicStaticAnalyzer",
                     "SecurityAnalyzer",
                     "ArchitectureAnalyzer",

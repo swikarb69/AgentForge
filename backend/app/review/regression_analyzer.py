@@ -3,6 +3,7 @@
 import ast
 import hashlib
 import uuid
+from typing import Any
 
 from backend.app.debugging.models import RepairResult, RepairState
 from backend.app.execution.models import VerificationReport
@@ -542,6 +543,33 @@ class RegressionAnalyzer:
                         )
 
         return self._filter_findings(findings, active_config)
+
+    def analyze_files(
+        self,
+        files: dict[str, str],
+        plan: ImplementationPlan | None = None,
+        verification_report: VerificationReport | None = None,
+        repair_result: Any | None = None,
+        config: ReviewConfiguration | None = None,
+    ) -> list[ReviewFinding]:
+        """Synthesize regression and quality checks across changed files."""
+        findings: list[ReviewFinding] = []
+        test_files = {p: c for p, c in files.items() if "test" in p.lower()}
+        if test_files:
+            findings.extend(self.analyze_test_quality(test_files, config=config))
+        if plan:
+            findings.extend(
+                self.analyze_plan_compliance(plan, list(files.keys()), config=config)
+            )
+        if verification_report:
+            findings.extend(
+                self.analyze_verification_compliance(verification_report, config=config)
+            )
+        if repair_result:
+            findings.extend(
+                self.analyze_repair_compliance(repair_result, config=config)
+            )
+        return findings
 
     def _filter_findings(
         self,

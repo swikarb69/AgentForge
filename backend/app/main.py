@@ -10,6 +10,7 @@ from backend.app.api.routes import (
     issues,
     planning,
     repositories,
+    review,
 )
 from backend.app.core.config import settings
 
@@ -48,6 +49,7 @@ app.include_router(planning.router)
 app.include_router(generation.router)
 app.include_router(execution.router)
 app.include_router(debugging.router)
+app.include_router(review.router)
 
 
 @app.get(

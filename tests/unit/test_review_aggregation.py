@@ -1,6 +1,5 @@
 """Unit tests for EvidenceCollector and ReviewAggregator."""
 
-
 from backend.app.review.aggregator import ReviewAggregator
 from backend.app.review.evidence import EvidenceCollector
 from backend.app.review.models import (

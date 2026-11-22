@@ -30,6 +30,7 @@ from backend.app.review.registry import RuleRegistry, get_default_registry
 from backend.app.review.regression_analyzer import RegressionAnalyzer
 from backend.app.review.rules import BUILTIN_RULES, ReviewRule
 from backend.app.review.security_analyzer import SecurityAnalyzer
+from backend.app.review.service import ReviewService
 from backend.app.review.static_analyzer import (
     DeterministicStaticAnalyzer,
     compute_content_hash,
@@ -57,6 +58,7 @@ __all__ = [
     "ReviewRequest",
     "ReviewRule",
     "ReviewScope",
+    "ReviewService",
     "ReviewStatus",
     "ReviewSummary",
     "ReviewValidationError",

@@ -19,11 +19,11 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 6 — Debugging & Automatic Repair Engine (Current Release: v0.7.0)**
+> **Sprint 7 — Code Review & Quality Assurance Engine (Current Release: v0.8.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprints 0, 1, 2, 3, 4, 5 & 6**:
+> **Implemented in Sprints 0 through 7**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
@@ -32,11 +32,12 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 > - **Code Generation Engine Subsystem**: Bounded source context extraction, replaceable provider interface (Mock & Gemini), versioned injection-resistant prompt templates (`v1.0`), structured code generator, patch validator with AST syntax checking, unified diff patch builder, and artifact storage (`backend/app/generation/`).
 > - **Execution & Verification Sandbox Subsystem**: Ephemeral isolated workspace manager with sensitive file filtering and quotas, secure patch application with path traversal / protected file defenses, locked-down Docker runner with unprivileged non-root user `10001:10001`, dropped capabilities `ALL`, read-only rootfs, tmpfs, network isolation `none`, and strict No-Host-Fallback, test execution parser, and verification engine (`backend/app/execution/`).
 > - **Debugging & Automatic Repair Subsystem**: Failure classification, evidence collection & stack trace attribution, root cause analysis engine, bounded repair strategy engine, bounded repair proposal generation, isolated ephemeral sandbox verification, loop & duplicate patch detection via SHA-256 hashing, human review escalation for environment defects, and high-risk approval pauses (`backend/app/debugging/`).
-> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`, `/api/v1/debugging/repair`, `/api/v1/debugging/repairs`, `/api/v1/debugging/repair/{id}`, `/api/v1/debugging/repair/{id}/history`.
-> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 331 passing tests.
+> - **Code Review & Quality Assurance Subsystem**: 24 built-in deterministic rules across 7 categories, deterministic AST static analyzer, security vulnerability pattern detector (SQL injection, shell injection, code execution, secret leakage with redaction, path traversal, deserialization, tempfiles), architecture analyzer (circular import DFS cycle detection, unidirectional layer boundaries, unapproved dependencies, coupling), regression analyzer (plan scope compliance, acceptance criteria verification, sandbox verification defects, test assertion validation), evidence collector with SHA-256 hashing, explainable 0-100 quality scoring, gating state machine (`APPROVED`, `APPROVED_WITH_COMMENTS`, `REQUIRES_CHANGES`, `BLOCKED`), markdown report generation, and repository immutability (`backend/app/review/`).
+> - **REST APIs**: Endpoints across Repositories, Issues, Planning, Generation, Execution, Debugging, and Reviews (`/api/v1/reviews/create`, `/api/v1/reviews`, `/api/v1/reviews/{id}`, `/api/v1/reviews/{id}/findings`, `/api/v1/reviews/{id}/report`, `/api/v1/reviews/rules`).
+> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 440 passing tests and $\ge 86\%$ coverage.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: Security review agents, code review engines, and GitHub PR creation are planned for Sprints 7–8.*
+> *Note: GitHub integration and PR shipping are planned for Sprint 8.*
 
 ---
 
