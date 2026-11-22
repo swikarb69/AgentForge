@@ -22,6 +22,10 @@ from backend.app.approval.exceptions import (
     ConflictingDecisionError,
     IdentityVerificationError,
     InvalidStateTransitionError,
+    ReleaseAuthorizationError,
+    ReleaseError,
+    ReleaseNotReadyError,
+    ReleaseProviderError,
     RepositoryPermissionError,
     SeparationOfDutiesError,
     UnauthorizedApproverError,
@@ -62,6 +66,17 @@ from backend.app.approval.readiness import (
     ReleaseReadinessEngine,
     ReleaseReadinessReport,
 )
+from backend.app.approval.release_models import (
+    PullRequestMetadata,
+    ReleaseExecutionRecord,
+    ReleaseStatus,
+)
+from backend.app.approval.release_provider import (
+    GitHubReleaseProvider,
+    MockReleaseProvider,
+    ReleaseProvider,
+)
+from backend.app.approval.release_service import ControlledReleaseService
 from backend.app.approval.request_service import ApprovalRequestService
 from backend.app.approval.state_machine import ApprovalStateMachine
 
@@ -90,20 +105,31 @@ __all__ = [
     "AuthorizationDecision",
     "AuthorizationEngine",
     "ConflictingDecisionError",
+    "ControlledReleaseService",
     "DecisionOutcome",
     "ExpirationManager",
     "GENESIS_HASH",
+    "GitHubReleaseProvider",
     "IdentityProvider",
     "IdentityVerificationError",
     "InvalidStateTransitionError",
     "LocalTestIdentityProvider",
+    "MockReleaseProvider",
     "PERMISSION_HIERARCHY",
     "PolicyEvaluationResult",
     "ProductionIdentityProvider",
+    "PullRequestMetadata",
     "ReadinessCheck",
     "ReadinessStatus",
+    "ReleaseAuthorizationError",
+    "ReleaseError",
+    "ReleaseExecutionRecord",
+    "ReleaseNotReadyError",
+    "ReleaseProvider",
+    "ReleaseProviderError",
     "ReleaseReadinessEngine",
     "ReleaseReadinessReport",
+    "ReleaseStatus",
     "RepositoryPermission",
     "RepositoryPermissionError",
     "SeparationOfDutiesError",

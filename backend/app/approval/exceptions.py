@@ -51,3 +51,19 @@ class RepositoryPermissionError(ApprovalError):
 
 class ConflictingDecisionError(ApprovalError):
     """Raised when an actor submits duplicate or conflicting decisions."""
+
+
+class ReleaseError(ApprovalError):
+    """Base exception for all controlled release errors."""
+
+
+class ReleaseAuthorizationError(ReleaseError):
+    """Raised when an actor lacks authorization to trigger release operations."""
+
+
+class ReleaseNotReadyError(ReleaseError):
+    """Raised when release candidate fails readiness criteria checks."""
+
+
+class ReleaseProviderError(ReleaseError):
+    """Raised when an external release provider encounters an operational failure."""
