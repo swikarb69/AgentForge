@@ -64,7 +64,7 @@ SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(
             r"""(?i)(api[_-]?key|secret|token|password|passwd|auth[_-]?token)"""
-            r"""\s*[:=]\s*['"]([a-zA-Z0-9_\-]{8,})['"]"""
+            r"""\s*[:=]\s*['"]([^'"]{8,})['"]"""
         ),
         r'\1="[REDACTED]"',
     ),
@@ -75,6 +75,10 @@ SECRET_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"""AKIA[0-9A-Z]{16}"""),
         "[REDACTED_AWS_KEY]",
+    ),
+    (
+        re.compile(r"""(?i)bearer\s+[a-zA-Z0-9_\-\.]{15,}"""),
+        "Bearer [REDACTED_BEARER_TOKEN]",
     ),
 ]
 

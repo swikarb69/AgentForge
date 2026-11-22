@@ -25,6 +25,7 @@ from backend.app.review.models import (
 )
 from backend.app.review.registry import RuleRegistry, get_default_registry
 from backend.app.review.rules import BUILTIN_RULES, ReviewRule
+from backend.app.review.security_analyzer import SecurityAnalyzer
 from backend.app.review.static_analyzer import (
     DeterministicStaticAnalyzer,
     compute_content_hash,
@@ -54,6 +55,7 @@ __all__ = [
     "RuleNotFoundError",
     "RuleRegistry",
     "RuleRegistryError",
+    "SecurityAnalyzer",
     "compute_content_hash",
     "extract_code_excerpt",
     "get_default_registry",
