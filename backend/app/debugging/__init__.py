@@ -21,6 +21,8 @@ from backend.app.debugging.models import (
     RootCauseType,
     StateTransition,
 )
+from backend.app.debugging.repair_strategy import RepairStrategyEngine
+from backend.app.debugging.root_cause_analyzer import RootCauseAnalyzer
 from backend.app.debugging.state_machine import (
     InvalidStateTransitionError,
     RepairStateMachine,
@@ -43,9 +45,11 @@ __all__ = [
     "RepairState",
     "RepairStateMachine",
     "RepairStrategy",
+    "RepairStrategyEngine",
     "RepairStrategyType",
     "RiskLevel",
     "RootCauseAnalysis",
+    "RootCauseAnalyzer",
     "RootCauseType",
     "StateTransition",
 ]
