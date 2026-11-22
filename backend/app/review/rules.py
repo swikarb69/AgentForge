@@ -415,6 +415,39 @@ BUILTIN_RULES: list[ReviewRule] = [
         ),
         tags=["architecture", "layering"],
     ),
+    ReviewRule(
+        rule_id="ARCH-003",
+        title="Unapproved External Dependency",
+        description=(
+            "Importing a third-party package not declared in pyproject.toml "
+            "or requirements.txt."
+        ),
+        category=FindingCategory.ARCHITECTURE,
+        severity=FindingSeverity.HIGH,
+        confidence=FindingConfidence.HIGH,
+        remediation_guidance=(
+            "Add the dependency to pyproject.toml or use standard library / "
+            "existing packages."
+        ),
+        tags=["architecture", "dependencies"],
+        requires_human_review=True,
+    ),
+    ReviewRule(
+        rule_id="ARCH-004",
+        title="Excessive Module Coupling",
+        description=(
+            "Module imports from more than 15 distinct internal modules, "
+            "indicating high coupling."
+        ),
+        category=FindingCategory.ARCHITECTURE,
+        severity=FindingSeverity.MEDIUM,
+        confidence=FindingConfidence.HIGH,
+        remediation_guidance=(
+            "Refactor to reduce coupling by grouping related functionality "
+            "or introducing facade abstractions."
+        ),
+        tags=["architecture", "coupling"],
+    ),
     # --- Regression ---
     ReviewRule(
         rule_id="REG-001",

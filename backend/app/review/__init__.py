@@ -1,5 +1,6 @@
 """Code Review and Quality Assurance subsystem for AgentForge."""
 
+from backend.app.review.architecture_analyzer import ArchitectureAnalyzer
 from backend.app.review.exceptions import (
     ArtifactNotFoundError,
     DuplicateRuleError,
@@ -24,6 +25,7 @@ from backend.app.review.models import (
     redact_secrets,
 )
 from backend.app.review.registry import RuleRegistry, get_default_registry
+from backend.app.review.regression_analyzer import RegressionAnalyzer
 from backend.app.review.rules import BUILTIN_RULES, ReviewRule
 from backend.app.review.security_analyzer import SecurityAnalyzer
 from backend.app.review.static_analyzer import (
@@ -33,6 +35,7 @@ from backend.app.review.static_analyzer import (
 )
 
 __all__ = [
+    "ArchitectureAnalyzer",
     "ArtifactNotFoundError",
     "BUILTIN_RULES",
     "CodeEvidence",
@@ -41,6 +44,7 @@ __all__ = [
     "FindingCategory",
     "FindingConfidence",
     "FindingSeverity",
+    "RegressionAnalyzer",
     "ReviewConfiguration",
     "ReviewError",
     "ReviewFinding",
