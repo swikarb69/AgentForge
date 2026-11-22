@@ -19,11 +19,11 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 7 — Code Review & Quality Assurance Engine (Current Release: v0.8.0)**
+> **Sprint 8 — Human Approval & Controlled Release Engine (Current Release: v0.9.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprints 0 through 7**:
+> **Implemented in Sprints 0 through 8**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
@@ -33,11 +33,10 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 > - **Execution & Verification Sandbox Subsystem**: Ephemeral isolated workspace manager with sensitive file filtering and quotas, secure patch application with path traversal / protected file defenses, locked-down Docker runner with unprivileged non-root user `10001:10001`, dropped capabilities `ALL`, read-only rootfs, tmpfs, network isolation `none`, and strict No-Host-Fallback, test execution parser, and verification engine (`backend/app/execution/`).
 > - **Debugging & Automatic Repair Subsystem**: Failure classification, evidence collection & stack trace attribution, root cause analysis engine, bounded repair strategy engine, bounded repair proposal generation, isolated ephemeral sandbox verification, loop & duplicate patch detection via SHA-256 hashing, human review escalation for environment defects, and high-risk approval pauses (`backend/app/debugging/`).
 > - **Code Review & Quality Assurance Subsystem**: 24 built-in deterministic rules across 7 categories, deterministic AST static analyzer, security vulnerability pattern detector (SQL injection, shell injection, code execution, secret leakage with redaction, path traversal, deserialization, tempfiles), architecture analyzer (circular import DFS cycle detection, unidirectional layer boundaries, unapproved dependencies, coupling), regression analyzer (plan scope compliance, acceptance criteria verification, sandbox verification defects, test assertion validation), evidence collector with SHA-256 hashing, explainable 0-100 quality scoring, gating state machine (`APPROVED`, `APPROVED_WITH_COMMENTS`, `REQUIRES_CHANGES`, `BLOCKED`), markdown report generation, and repository immutability (`backend/app/review/`).
-> - **REST APIs**: Endpoints across Repositories, Issues, Planning, Generation, Execution, Debugging, and Reviews (`/api/v1/reviews/create`, `/api/v1/reviews`, `/api/v1/reviews/{id}`, `/api/v1/reviews/{id}/findings`, `/api/v1/reviews/{id}/report`, `/api/v1/reviews/rules`).
-> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 440 passing tests and $\ge 86\%$ coverage.
+> - **Human Approval & Controlled Release Subsystem**: Explicit human authorization boundary, separation of duties, role-based & risk-tiered approval policies (LOW, MEDIUM, HIGH, CRITICAL), deterministic state machine, on-read & sweep expiration management, SHA-256 hash-chained tamper-evident audit trail with secret sanitization, 13-point release readiness validation engine, controlled release providers (Mock & GitHub REST), zero-auto-merge enforcement (strictly creates release candidate branches and pull requests), and release tracking (`backend/app/approval/`).
+> - **REST APIs**: Endpoints across Repositories, Issues, Planning, Generation, Execution, Debugging, Reviews, and Human Approval & Controlled Release (`/api/v1/approval/requests`, `/api/v1/approval/requests/{id}/decide`, `/api/v1/approval/requests/{id}/readiness`, `/api/v1/approval/requests/{id}/release`, `/api/v1/approval/requests/{id}/audit/verify`, `/api/v1/approval/releases`).
+> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 100+ passing approval tests and $\ge 90\%$ subsystem coverage.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
->
-> *Note: GitHub integration and PR shipping are planned for Sprint 8.*
 
 ---
 
@@ -241,6 +240,15 @@ Endpoints:
 - List Repair Sessions: `GET http://localhost:8000/api/v1/debugging/repairs`
 - Get Repair Status: `GET http://localhost:8000/api/v1/debugging/repair/{repair_id}`
 - Get Repair Iteration History: `GET http://localhost:8000/api/v1/debugging/repair/{repair_id}/history`
+- Create Approval Request: `POST http://localhost:8000/api/v1/approval/requests`
+- List Approval Requests: `GET http://localhost:8000/api/v1/approval/requests`
+- Get Approval Request: `GET http://localhost:8000/api/v1/approval/requests/{id}`
+- Submit Human Decision: `POST http://localhost:8000/api/v1/approval/requests/{id}/decide`
+- Revoke Approval: `POST http://localhost:8000/api/v1/approval/requests/{id}/revoke`
+- Evaluate Release Readiness: `GET http://localhost:8000/api/v1/approval/requests/{id}/readiness`
+- Execute Controlled Release: `POST http://localhost:8000/api/v1/approval/requests/{id}/release`
+- Verify Audit Hash Chain: `GET http://localhost:8000/api/v1/approval/requests/{id}/audit/verify`
+- List Releases: `GET http://localhost:8000/api/v1/approval/releases`
 - OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
@@ -275,9 +283,9 @@ pytest --cov=backend/app --cov-report=term-missing
 - **Sprint 4 — Code Generation Engine** (COMPLETED): Source context builder, mock & Gemini providers, AST syntax validator, unified patch builder.
 - **Sprint 5 — Execution Sandbox Engine** (COMPLETED): Isolated workspace manager, secure patch applier, restricted Docker runner, test executor, verification engine.
 - **Sprint 6 — Debugging & Automatic Repair Engine** (COMPLETED): Failure classification, root cause analysis, bounded repair loop, loop detection, sandbox verification.
-- **Sprint 7 — Security & Code Review Engine** (NEXT): Secret scanner, prompt injection defender, code reviewer.
-- **Sprint 8 — GitHub Integration & PR Shipping**: Git branch creator, commit and PR generator.
-- **Sprint 9 — Evaluation & Benchmarks**: Benchmark evaluation suite and token/cost trackers.
+- **Sprint 7 — Security & Code Review Engine** (COMPLETED): 24 static & security rules, AST analyzer, architecture cycles, regression analysis, report generator.
+- **Sprint 8 — Human Approval & Controlled Release** (COMPLETED): Human authorization boundary, separation of duties, 13-point readiness validation, tamper-evident audit trail, release candidate branches & PRs.
+- **Sprint 9 — Evaluation & Benchmarks** (NEXT): Benchmark evaluation suite and token/cost trackers.
 - **Sprint 10 — Production Polish**: Developer UI dashboard and final audit.
 
 For comprehensive sprint details, read [docs/roadmap.md](docs/roadmap.md).

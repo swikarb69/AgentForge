@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
 from backend.app.api.routes import (
+    approval,
     debugging,
     execution,
     generation,
@@ -50,6 +51,7 @@ app.include_router(generation.router)
 app.include_router(execution.router)
 app.include_router(debugging.router)
 app.include_router(review.router)
+app.include_router(approval.router)
 
 
 @app.get(

@@ -31,10 +31,10 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 7] Security & Senior Peer Code Review Engine (COMPLETED)
     │
     ▼
-[Sprint 8] GitHub Integration & PR Shipping Agent (NEXT)
+[Sprint 8] Human Approval & Controlled Release Engine (COMPLETED)
     │
     ▼
-[Sprint 9] Benchmark Evaluation Suite & Token/Cost Analytics
+[Sprint 9] Benchmark Evaluation Suite & Token/Cost Analytics (NEXT)
     │
     ▼
 [Sprint 10] Developer UI Dashboard & Final Polish
@@ -76,9 +76,9 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Status**: **COMPLETED**
 - **Deliverables**: 24 built-in deterministic rules across 7 categories (`backend/app/review/rules.py`, `backend/app/review/registry.py`), deterministic AST static analyzer (`backend/app/review/static_analyzer.py`), security vulnerability analyzer with secret redaction (`backend/app/review/security_analyzer.py`), architecture analyzer with circular import DFS cycle detection and layer boundary enforcement (`backend/app/review/architecture_analyzer.py`), regression & test quality analyzer (`backend/app/review/regression_analyzer.py`), evidence collection with SHA-256 fingerprinting (`backend/app/review/evidence.py`), explainable quality scoring and gating state machine (`backend/app/review/aggregator.py`), review orchestrator service (`backend/app/review/service.py`), REST APIs (`/api/v1/reviews/create`, `/api/v1/reviews`, `/api/v1/reviews/{id}`, `/api/v1/reviews/{id}/findings`, `/api/v1/reviews/{id}/report`, `/api/v1/reviews/rules`), unit and integration test suite with repository immutability verification, and technical documentation (`docs/code-review-and-quality.md`).
 
-### Sprint 8 — GitHub Integration & PR Shipping Agent
-- **Status**: PLANNED
-- **Deliverables**: Git branch creator, commit synthesizer, pull request creator with auditable run reports and test evidence.
+### Sprint 8 — Human Approval & Controlled Release Engine
+- **Status**: **COMPLETED**
+- **Deliverables**: Domain models (`ApprovalRequest`, `ApprovalDecision`, `ArtifactBinding`, `ApprovalPolicy`, `ApprovalStatus`, `ApprovalRiskLevel`), deterministic state machine (`ApprovalStateMachine`), user identity and authorization engine (`UserIdentity`, `AuthorizationEngine`, `LocalTestIdentityProvider`, `ProductionIdentityProvider`), append-only SHA-256 hash-chained audit trail with secret redaction (`AuditTrailStore`), on-read and background expiration manager (`ExpirationManager`), approval request service (`ApprovalRequestService`), decision service (`ApprovalDecisionService`), 13-point release readiness validation engine (`ReleaseReadinessEngine`), controlled release providers (`ReleaseProvider`, `MockReleaseProvider`, `GitHubReleaseProvider`), controlled release orchestration service with zero-auto-merge enforcement (`ControlledReleaseService`), unified facade service (`ApprovalService`), FastAPI REST APIs (`/api/v1/approval/requests`, `/api/v1/approval/requests/{id}/decide`, `/api/v1/approval/requests/{id}/revoke`, `/api/v1/approval/requests/{id}/readiness`, `/api/v1/approval/requests/{id}/release`, `/api/v1/approval/requests/{id}/audit`, `/api/v1/approval/requests/{id}/audit/verify`, `/api/v1/approval/releases`), unit and integration test suites, and technical documentation (`docs/approval-and-release.md`).
 
 ### Sprint 9 — Benchmark Evaluation Suite & Token/Cost Analytics
 - **Status**: PLANNED

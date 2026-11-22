@@ -437,9 +437,7 @@ async def test_controlled_release_separation_of_duties(
         username="lead_operator",
         display_name="Lead Operator",
         roles=[ApprovalRole.RELEASE_OPERATOR],
-        repository_permissions={
-            "owner/repo": [RepositoryPermission.RELEASE.value]
-        },
+        repository_permissions={"owner/repo": [RepositoryPermission.RELEASE.value]},
     )
 
     with pytest.raises(

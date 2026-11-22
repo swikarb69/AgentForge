@@ -78,6 +78,7 @@ from backend.app.approval.release_provider import (
 )
 from backend.app.approval.release_service import ControlledReleaseService
 from backend.app.approval.request_service import ApprovalRequestService
+from backend.app.approval.service import ApprovalService
 from backend.app.approval.state_machine import ApprovalStateMachine
 
 __all__ = [
@@ -95,6 +96,7 @@ __all__ = [
     "ApprovalRevokedError",
     "ApprovalRiskLevel",
     "ApprovalRole",
+    "ApprovalService",
     "ApprovalStateMachine",
     "ApprovalStatus",
     "ApprovalValidationError",

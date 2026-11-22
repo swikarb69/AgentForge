@@ -5,7 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from backend.app.approval.models import (
     ApprovalRequest,
@@ -74,6 +74,7 @@ class ReleaseReadinessReport(BaseModel):
         description="ISO 8601 evaluation timestamp",
     )
 
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def is_release_ready(self) -> bool:
         """True if candidate has successfully satisfied all readiness criteria."""
