@@ -59,9 +59,7 @@ def test_root_cause_type_enum() -> None:
 
 def test_repair_strategy_type_enum() -> None:
     """Verify repair strategy types."""
-    assert (
-        RepairStrategyType.ADD_OR_CORRECT_IMPORT.value == "add_or_correct_import"
-    )
+    assert RepairStrategyType.ADD_OR_CORRECT_IMPORT.value == "add_or_correct_import"
     assert RepairStrategyType.MODIFY_AFFECTED_LOGIC.value == "modify_affected_logic"
     assert (
         RepairStrategyType.STOP_INFRASTRUCTURE_ISSUE.value
