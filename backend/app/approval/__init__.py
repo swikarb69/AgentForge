@@ -1,9 +1,16 @@
 """Approval subsystem for AgentForge human approval and controlled release."""
 
+from backend.app.approval.audit import (
+    GENESIS_HASH,
+    AuditEventRecord,
+    AuditTrailStore,
+    compute_event_hash,
+)
 from backend.app.approval.authorization import (
     AuthorizationDecision,
     AuthorizationEngine,
 )
+from backend.app.approval.decision_service import ApprovalDecisionService
 from backend.app.approval.exceptions import (
     ApprovalError,
     ApprovalExpiredError,
@@ -19,6 +26,7 @@ from backend.app.approval.exceptions import (
     SeparationOfDutiesError,
     UnauthorizedApproverError,
 )
+from backend.app.approval.expiration import ExpirationManager
 from backend.app.approval.identity import (
     PERMISSION_HIERARCHY,
     IdentityProvider,
@@ -48,11 +56,13 @@ from backend.app.approval.policies import (
     get_low_risk_policy,
     policy_for_risk_level,
 )
+from backend.app.approval.request_service import ApprovalRequestService
 from backend.app.approval.state_machine import ApprovalStateMachine
 
 __all__ = [
     "ApprovalAuditEvent",
     "ApprovalDecision",
+    "ApprovalDecisionService",
     "ApprovalError",
     "ApprovalExpiredError",
     "ApprovalNotFoundError",
@@ -60,6 +70,7 @@ __all__ = [
     "ApprovalPolicyEvaluator",
     "ApprovalPolicyViolationError",
     "ApprovalRequest",
+    "ApprovalRequestService",
     "ApprovalRevokedError",
     "ApprovalRiskLevel",
     "ApprovalRole",
@@ -68,10 +79,14 @@ __all__ = [
     "ApprovalValidationError",
     "ArtifactBinding",
     "ArtifactMismatchError",
+    "AuditEventRecord",
+    "AuditTrailStore",
     "AuthorizationDecision",
     "AuthorizationEngine",
     "ConflictingDecisionError",
     "DecisionOutcome",
+    "ExpirationManager",
+    "GENESIS_HASH",
     "IdentityProvider",
     "IdentityVerificationError",
     "InvalidStateTransitionError",
@@ -84,6 +99,7 @@ __all__ = [
     "SeparationOfDutiesError",
     "UnauthorizedApproverError",
     "UserIdentity",
+    "compute_event_hash",
     "evaluate_risk_level_from_review",
     "get_critical_policy",
     "get_default_policy",
