@@ -5,6 +5,20 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-11-22
+
+### Added - Sprint 6: Debugging and Automatic Repair Engine
+- **Failure Classification Taxonomy**: Deterministic classifier categorizing verification failures (`syntax_error`, `import_error`, `type_error`, `lint_error`, `test_failure`, `dependency_error`, `timeout`, `resource_exhaustion`, `patch_application_error`, `environment_error`, `unknown`) with auto-repair boundaries (`backend/app/debugging/failure_classifier.py`).
+- **Diagnostic Evidence Collector**: Bounded, sanitized extraction of test failure lines, traceback frames, implicated files/symbols, with secret redaction and byte limits (`backend/app/debugging/evidence_collector.py`).
+- **Root Cause Analyzer**: Defect attribution engine diagnosing primary/alternative causes, linking requirements/acceptance criteria, and identifying scope violations (`backend/app/debugging/root_cause_analyzer.py`).
+- **Repair Strategy Engine**: Bounded repair strategy selector with architectural risk rating (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), target file/symbol constraints, and human approval gates (`backend/app/debugging/repair_strategy.py`).
+- **Bounded Repair Proposal Engine**: Proposal generation reusing Sprint 4 code generation and patch validation, preventing out-of-scope modifications (`backend/app/debugging/repair_engine.py`).
+- **Isolated Repair Evaluator**: Outcome evaluator comparing pre-repair and post-repair execution reports, computing verdicts (`FIXED`, `PARTIALLY_FIXED`, `NOT_FIXED`, `REGRESSION_DETECTED`, `INCONCLUSIVE`), and detecting regressions (`backend/app/debugging/evaluation.py`).
+- **Bounded Repair Controller & State Machine**: Controller enforcing attempt limits (default 3, hard ceiling 5), SHA-256 patch hashing loop detection, environment defect safeguards, and state transitions via explicit `RepairStateMachine` (`backend/app/debugging/repair_controller.py`, `backend/app/debugging/state_machine.py`).
+- **Debugging Service & REST APIs**: Session management and query endpoints: `POST /api/v1/debugging/repair`, `GET /api/v1/debugging/repairs`, `GET /api/v1/debugging/repair/{repair_id}`, and `GET /api/v1/debugging/repair/{repair_id}/history` (`backend/app/debugging/service.py`, `backend/app/api/routes/debugging.py`).
+- **Unit, Integration, & Pipeline Test Suites**: Comprehensive test suite with 331 total passing tests and immutability verification (`tests/unit/test_debugging_*.py`, `tests/unit/test_failure_classifier.py`, `tests/unit/test_evidence_collector.py`, `tests/unit/test_root_cause_analyzer.py`, `tests/unit/test_repair_strategy.py`, `tests/unit/test_repair_engine.py`, `tests/unit/test_repair_evaluation.py`, `tests/unit/test_repair_controller.py`, `tests/integration/test_debugging_pipeline.py`).
+- **Documentation**: Comprehensive specification in `docs/debugging-and-repair.md`.
+
 ## [0.6.0] - 2026-11-21
 
 ### Added - Sprint 5: Execution & Verification Sandbox

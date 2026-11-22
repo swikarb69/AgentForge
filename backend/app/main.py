@@ -3,7 +3,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 
-from backend.app.api.routes import execution, generation, issues, planning, repositories
+from backend.app.api.routes import (
+    debugging,
+    execution,
+    generation,
+    issues,
+    planning,
+    repositories,
+)
 from backend.app.core.config import settings
 
 
@@ -40,6 +47,7 @@ app.include_router(issues.router)
 app.include_router(planning.router)
 app.include_router(generation.router)
 app.include_router(execution.router)
+app.include_router(debugging.router)
 
 
 @app.get(

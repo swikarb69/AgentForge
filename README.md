@@ -19,11 +19,11 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 5 — Execution & Verification Sandbox (Current Release: v0.6.0)**
+> **Sprint 6 — Debugging & Automatic Repair Engine (Current Release: v0.7.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprints 0, 1, 2, 3, 4 & 5**:
+> **Implemented in Sprints 0, 1, 2, 3, 4, 5 & 6**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
@@ -31,11 +31,12 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 > - **Planning Engine Subsystem**: Impact analysis, implementation task generation, requirement traceability, acceptance verification planning, dependency analysis & cycle detection, risk analysis, grounded assumption extraction, plan validation, and planning service (`backend/app/planning/`).
 > - **Code Generation Engine Subsystem**: Bounded source context extraction, replaceable provider interface (Mock & Gemini), versioned injection-resistant prompt templates (`v1.0`), structured code generator, patch validator with AST syntax checking, unified diff patch builder, and artifact storage (`backend/app/generation/`).
 > - **Execution & Verification Sandbox Subsystem**: Ephemeral isolated workspace manager with sensitive file filtering and quotas, secure patch application with path traversal / protected file defenses, locked-down Docker runner with unprivileged non-root user `10001:10001`, dropped capabilities `ALL`, read-only rootfs, tmpfs, network isolation `none`, and strict No-Host-Fallback, test execution parser, and verification engine (`backend/app/execution/`).
-> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`.
-> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 214 passing tests.
+> - **Debugging & Automatic Repair Subsystem**: Failure classification, evidence collection & stack trace attribution, root cause analysis engine, bounded repair strategy engine, bounded repair proposal generation, isolated ephemeral sandbox verification, loop & duplicate patch detection via SHA-256 hashing, human review escalation for environment defects, and high-risk approval pauses (`backend/app/debugging/`).
+> - **REST APIs**: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`, `/api/v1/debugging/repair`, `/api/v1/debugging/repairs`, `/api/v1/debugging/repair/{id}`, `/api/v1/debugging/repair/{id}/history`.
+> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 331 passing tests.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 >
-> *Note: Automated repair loops, security review agents, and GitHub PR creation are planned for Sprints 6–8.*
+> *Note: Security review agents, code review engines, and GitHub PR creation are planned for Sprints 7–8.*
 
 ---
 
@@ -97,15 +98,58 @@ AgentForge/
 │       ├── main.py                    # FastAPI entrypoint
 │       ├── api/
 │       │   └── routes/
-│       │       └── repositories.py   # Repository Analysis & Search APIs
+│       │       ├── debugging.py       # Debugging & Automatic Repair APIs
+│       │       ├── execution.py       # Sandboxed Execution APIs
+│       │       ├── generation.py      # Code Generation APIs
+│       │       ├── issues.py          # Issue Intelligence APIs
+│       │       ├── planning.py        # Planning Engine APIs
+│       │       └── repositories.py    # Repository Analysis & Search APIs
 │       ├── core/
 │       │   └── config.py              # Pydantic Settings
+│       ├── debugging/
+│       │   ├── classifier.py          # Failure classification engine
+│       │   ├── evidence_collector.py  # Failure evidence & stack trace attribution
+│       │   ├── models.py              # Debugging & repair state schemas
+│       │   ├── repair_controller.py   # State machine orchestration & loop detection
+│       │   ├── repair_engine.py       # Bounded code repair generation
+│       │   ├── repair_evaluator.py    # Sandbox evaluation & regression checker
+│       │   ├── repair_strategy.py     # Strategy selection & risk assessment
+│       │   ├── root_cause.py          # Diagnostic root cause analyzer
+│       │   └── service.py             # Debugging session management service
+│       ├── execution/
+│       │   ├── applier.py             # Safe patch applier
+│       │   ├── docker_runner.py       # Hardened Docker execution runner
+│       │   ├── models.py              # Execution & verification schemas
+│       │   ├── parser.py              # Test output parser
+│       │   ├── service.py             # Verification engine service
+│       │   └── workspace.py           # Ephemeral workspace manager
+│       ├── generation/
+│       │   ├── generator.py           # Structured code generator
+│       │   ├── models.py              # Generation schemas
+│       │   ├── patch_builder.py       # Unified diff builder
+│       │   ├── prompts.py             # Prompt templates
+│       │   ├── providers.py           # Mock & Gemini LLM providers
+│       │   └── validator.py           # AST patch validator
 │       ├── indexing/
 │       │   ├── chunker.py             # Structural code chunker
 │       │   └── index.py               # In-memory repository index & search
+│       ├── issue/
+│       │   ├── builder.py             # IssueContext builder
+│       │   ├── matcher.py             # Repository-aware issue matcher
+│       │   ├── models.py              # Issue intelligence schemas
+│       │   ├── parser.py              # Issue & requirement parser
+│       │   └── references.py          # Symbol & entity extractor
 │       ├── parsing/
 │       │   ├── python_parser.py       # Python AST parser
 │       │   └── symbols.py             # AST node helpers
+│       ├── planning/
+│       │   ├── analyzer.py            # Impact analyzer
+│       │   ├── generator.py           # Implementation task generator
+│       │   ├── graph.py               # Dependency graph & cycle detector
+│       │   ├── models.py              # Planning schemas
+│       │   ├── risk.py                # Risk & assumption analyzer
+│       │   ├── service.py             # Planning service
+│       │   └── validator.py           # Plan validator
 │       └── repository/
 │           ├── analyzer.py            # High-level RepositoryAnalyzer pipeline
 │           ├── filters.py             # Path validation & ignore rules
@@ -192,6 +236,10 @@ Endpoints:
 - Run Sandboxed Execution: `POST http://localhost:8000/api/v1/execution/create`
 - List Verification Reports: `GET http://localhost:8000/api/v1/execution/reports`
 - Get Verification Report: `GET http://localhost:8000/api/v1/execution/reports/{execution_id}`
+- Trigger Automated Repair: `POST http://localhost:8000/api/v1/debugging/repair`
+- List Repair Sessions: `GET http://localhost:8000/api/v1/debugging/repairs`
+- Get Repair Status: `GET http://localhost:8000/api/v1/debugging/repair/{repair_id}`
+- Get Repair Iteration History: `GET http://localhost:8000/api/v1/debugging/repair/{repair_id}/history`
 - OpenAPI Docs: `http://localhost:8000/docs`
 
 ---
@@ -225,8 +273,8 @@ pytest --cov=backend/app --cov-report=term-missing
 - **Sprint 3 — Planning Engine** (COMPLETED): Impact analyzer, task generator, dependency graph, risk analyzer, plan validator.
 - **Sprint 4 — Code Generation Engine** (COMPLETED): Source context builder, mock & Gemini providers, AST syntax validator, unified patch builder.
 - **Sprint 5 — Execution Sandbox Engine** (COMPLETED): Isolated workspace manager, secure patch applier, restricted Docker runner, test executor, verification engine.
-- **Sprint 6 — Test Generation & Automated Debugger** (NEXT): Automated test creation & repair loop.
-- **Sprint 7 — Security & Code Review Engine**: Secret scanner, prompt injection defender, code reviewer.
+- **Sprint 6 — Debugging & Automatic Repair Engine** (COMPLETED): Failure classification, root cause analysis, bounded repair loop, loop detection, sandbox verification.
+- **Sprint 7 — Security & Code Review Engine** (NEXT): Secret scanner, prompt injection defender, code reviewer.
 - **Sprint 8 — GitHub Integration & PR Shipping**: Git branch creator, commit and PR generator.
 - **Sprint 9 — Evaluation & Benchmarks**: Benchmark evaluation suite and token/cost trackers.
 - **Sprint 10 — Production Polish**: Developer UI dashboard and final audit.

@@ -443,3 +443,9 @@ class RepairResult(BaseModel):
     error_message: str | None = Field(
         default=None, description="Error message if repair failed or cancelled"
     )
+    config: RepairConfiguration | None = Field(
+        default=None, description="Configuration used for repair loop"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Audit and session metadata"
+    )

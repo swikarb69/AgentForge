@@ -19,6 +19,27 @@ class RepairStrategyEngine:
     def __init__(self, config: RepairConfiguration | None = None) -> None:
         self.config = config or RepairConfiguration()
 
+    def determine_strategy(
+        self,
+        root_cause: RootCauseAnalysis,
+        evidence: DiagnosticEvidence,
+        classification: FailureClassification | None = None,
+        plan: ImplementationPlan | None = None,
+    ) -> RepairStrategy:
+        """Alias for select_strategy."""
+        from backend.app.debugging.models import FailureCategory
+
+        cls = classification or FailureClassification(
+            category=FailureCategory.UNKNOWN,
+            explanation="Synthesized classification for determine_strategy",
+        )
+        return self.select_strategy(
+            root_cause=root_cause,
+            classification=cls,
+            evidence=evidence,
+            plan=plan,
+        )
+
     def select_strategy(
         self,
         root_cause: RootCauseAnalysis,

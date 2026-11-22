@@ -28,59 +28,64 @@ from backend.app.generation.models import ChangeType, GeneratedFileChange
 
 def test_failure_category_enum() -> None:
     """Verify all expected failure categories exist."""
-    assert FailureCategory.TEST_FAILURE == "test_failure"
-    assert FailureCategory.IMPORT_ERROR == "import_error"
-    assert FailureCategory.SYNTAX_ERROR == "syntax_error"
-    assert FailureCategory.TYPE_ERROR == "type_error"
-    assert FailureCategory.LINT_ERROR == "lint_error"
-    assert FailureCategory.DEPENDENCY_ERROR == "dependency_error"
-    assert FailureCategory.CONFIGURATION_ERROR == "configuration_error"
-    assert FailureCategory.TIMEOUT == "timeout"
-    assert FailureCategory.RESOURCE_EXHAUSTION == "resource_exhaustion"
-    assert FailureCategory.PATCH_APPLICATION_ERROR == "patch_application_error"
-    assert FailureCategory.ENVIRONMENT_ERROR == "environment_error"
-    assert FailureCategory.UNKNOWN == "unknown"
+    assert FailureCategory.TEST_FAILURE.value == "test_failure"
+    assert FailureCategory.IMPORT_ERROR.value == "import_error"
+    assert FailureCategory.SYNTAX_ERROR.value == "syntax_error"
+    assert FailureCategory.TYPE_ERROR.value == "type_error"
+    assert FailureCategory.LINT_ERROR.value == "lint_error"
+    assert FailureCategory.DEPENDENCY_ERROR.value == "dependency_error"
+    assert FailureCategory.CONFIGURATION_ERROR.value == "configuration_error"
+    assert FailureCategory.TIMEOUT.value == "timeout"
+    assert FailureCategory.RESOURCE_EXHAUSTION.value == "resource_exhaustion"
+    assert FailureCategory.PATCH_APPLICATION_ERROR.value == "patch_application_error"
+    assert FailureCategory.ENVIRONMENT_ERROR.value == "environment_error"
+    assert FailureCategory.UNKNOWN.value == "unknown"
 
 
 def test_root_cause_type_enum() -> None:
     """Verify all expected root cause types exist."""
-    assert RootCauseType.INCORRECT_LOGIC == "incorrect_logic"
-    assert RootCauseType.MISSING_IMPORT == "missing_import"
-    assert RootCauseType.INCORRECT_SIGNATURE == "incorrect_signature"
-    assert RootCauseType.TYPE_MISMATCH == "type_mismatch"
-    assert RootCauseType.MISSING_DEPENDENCY == "missing_dependency"
-    assert RootCauseType.INVALID_CONFIGURATION == "invalid_configuration"
-    assert RootCauseType.INCORRECT_FILE_PATH == "incorrect_file_path"
-    assert RootCauseType.BROKEN_INTEGRATION == "broken_integration"
-    assert RootCauseType.TEST_EXPECTATION_MISMATCH == "test_expectation_mismatch"
-    assert RootCauseType.ENVIRONMENT_ISSUE == "environment_issue"
-    assert RootCauseType.UNKNOWN_CAUSE == "unknown_cause"
+    assert RootCauseType.INCORRECT_LOGIC.value == "incorrect_logic"
+    assert RootCauseType.MISSING_IMPORT.value == "missing_import"
+    assert RootCauseType.INCORRECT_SIGNATURE.value == "incorrect_signature"
+    assert RootCauseType.TYPE_MISMATCH.value == "type_mismatch"
+    assert RootCauseType.MISSING_DEPENDENCY.value == "missing_dependency"
+    assert RootCauseType.INVALID_CONFIGURATION.value == "invalid_configuration"
+    assert RootCauseType.INCORRECT_FILE_PATH.value == "incorrect_file_path"
+    assert RootCauseType.BROKEN_INTEGRATION.value == "broken_integration"
+    assert RootCauseType.TEST_EXPECTATION_MISMATCH.value == "test_expectation_mismatch"
+    assert RootCauseType.ENVIRONMENT_ISSUE.value == "environment_issue"
+    assert RootCauseType.UNKNOWN_CAUSE.value == "unknown_cause"
 
 
 def test_repair_strategy_type_enum() -> None:
     """Verify repair strategy types."""
-    assert RepairStrategyType.ADD_OR_CORRECT_IMPORT == "add_or_correct_import"
-    assert RepairStrategyType.MODIFY_AFFECTED_LOGIC == "modify_affected_logic"
-    assert RepairStrategyType.STOP_INFRASTRUCTURE_ISSUE == "stop_infrastructure_issue"
-    assert RepairStrategyType.REQUEST_HUMAN_REVIEW == "request_human_review"
+    assert (
+        RepairStrategyType.ADD_OR_CORRECT_IMPORT.value == "add_or_correct_import"
+    )
+    assert RepairStrategyType.MODIFY_AFFECTED_LOGIC.value == "modify_affected_logic"
+    assert (
+        RepairStrategyType.STOP_INFRASTRUCTURE_ISSUE.value
+        == "stop_infrastructure_issue"
+    )
+    assert RepairStrategyType.REQUEST_HUMAN_REVIEW.value == "request_human_review"
 
 
 def test_repair_state_enum() -> None:
     """Verify repair state machine states."""
-    assert RepairState.PENDING == "pending"
-    assert RepairState.ANALYZING == "analyzing"
-    assert RepairState.DIAGNOSING == "diagnosing"
-    assert RepairState.AWAITING_APPROVAL == "awaiting_approval"
-    assert RepairState.GENERATING_REPAIR == "generating_repair"
-    assert RepairState.VALIDATING_REPAIR == "validating_repair"
-    assert RepairState.EXECUTING_REPAIR == "executing_repair"
-    assert RepairState.EVALUATING == "evaluating"
-    assert RepairState.SUCCEEDED == "succeeded"
-    assert RepairState.PARTIALLY_SUCCEEDED == "partially_succeeded"
-    assert RepairState.FAILED == "failed"
-    assert RepairState.NEEDS_HUMAN_REVIEW == "needs_human_review"
-    assert RepairState.CANCELLED == "cancelled"
-    assert RepairState.MAX_ATTEMPTS_REACHED == "max_attempts_reached"
+    assert RepairState.PENDING.value == "pending"
+    assert RepairState.ANALYZING.value == "analyzing"
+    assert RepairState.DIAGNOSING.value == "diagnosing"
+    assert RepairState.AWAITING_APPROVAL.value == "awaiting_approval"
+    assert RepairState.GENERATING_REPAIR.value == "generating_repair"
+    assert RepairState.VALIDATING_REPAIR.value == "validating_repair"
+    assert RepairState.EXECUTING_REPAIR.value == "executing_repair"
+    assert RepairState.EVALUATING.value == "evaluating"
+    assert RepairState.SUCCEEDED.value == "succeeded"
+    assert RepairState.PARTIALLY_SUCCEEDED.value == "partially_succeeded"
+    assert RepairState.FAILED.value == "failed"
+    assert RepairState.NEEDS_HUMAN_REVIEW.value == "needs_human_review"
+    assert RepairState.CANCELLED.value == "cancelled"
+    assert RepairState.MAX_ATTEMPTS_REACHED.value == "max_attempts_reached"
 
 
 def test_failure_classification_valid() -> None:
@@ -193,7 +198,7 @@ def test_repair_proposal_model() -> None:
         path="app/auth.py",
         change_type=ChangeType.MODIFY,
         content="import jwt\n",
-        explanation="Add missing jwt import",
+        description="Add missing jwt import",
     )
     proposal = RepairProposal(
         repair_id="REP-001",

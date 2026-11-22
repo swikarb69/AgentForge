@@ -7,18 +7,20 @@ This document presents the technical architecture, core operational workflow, mo
 ## 1. System Implementation Status
 
 > [!IMPORTANT]
-> **Current Status**: **Sprint 5 — Execution & Verification Sandbox**
+> [!IMPORTANT]
+> **Current Status**: **Sprint 6 — Debugging & Automatic Repair Engine**
 >
-> - **IMPLEMENTED IN SPRINTS 0, 1, 2, 3, 4 & 5**:
+> - **IMPLEMENTED IN SPRINTS 0, 1, 2, 3, 4, 5 & 6**:
 >   - FastAPI core application & Pydantic configuration (`backend/app/main.py`, `backend/app/core/config.py`).
 >   - Repository Intelligence Subsystem (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 >   - Issue Intelligence Subsystem (`backend/app/issue/`): Parser, Requirement Extractor, Reference Extractor, Repository Matcher, Issue Context Pipeline.
 >   - Planning Engine Subsystem (`backend/app/planning/`): Impact Analyzer, Task Generator & Traceability, Dependency Analyzer & Cycle Detection, Risk Analyzer, Plan Validator, and Planning Service.
 >   - Code Generation Engine Subsystem (`backend/app/generation/`): Source Context Builder, Code Generator, Pluggable Providers (Mock & Gemini), Patch Validator, Patch Builder, and Generation Service.
 >   - Execution & Verification Sandbox Subsystem (`backend/app/execution/`): Execution Policy, Ephemeral Workspace Manager, Secure Patch Applier, Restricted Docker Runner, Test Executor, Verification Engine, and Execution Service.
->   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`.
+>   - Debugging and Automatic Repair Engine (`backend/app/debugging/`): Failure Classifier, Diagnostic Evidence Collector, Root Cause Analyzer, Repair Strategy Engine, Repair Proposal Engine, Repair Evaluator, Bounded Repair Controller, State Machine, and Debugging Service.
+>   - REST APIs: `/api/v1/health`, `/api/v1/version`, `/api/v1/repositories/analyze`, `/api/v1/repositories/search`, `/api/v1/issues/analyze`, `/api/v1/issues/context`, `/api/v1/planning/create`, `/api/v1/planning/validate`, `/api/v1/generation/create`, `/api/v1/generation/{id}`, `/api/v1/generation/{id}/patch`, `/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`, `/api/v1/debugging/repair`, `/api/v1/debugging/repairs`, `/api/v1/debugging/repair/{id}`, `/api/v1/debugging/repair/{id}/history`.
 >   - Baseline Sandbox Dockerfile and Security Policy JSON (`sandbox/`).
->   - Unit, Integration, & Pipeline Test Suites with comprehensive code coverage (214 tests passing).
+>   - Unit, Integration, & Pipeline Test Suites with comprehensive code coverage (331 tests passing).
 >   - GitHub Actions CI Pipeline (`.github/workflows/ci.yml`).
 >
 > - **KEY ARCHITECTURAL PRINCIPLES**:
@@ -26,9 +28,10 @@ This document presents the technical architecture, core operational workflow, mo
 >   - Strict No-Host-Fallback: Sandboxed execution runs strictly inside Docker containers; failure to run in Docker fails deterministically without running on host.
 >   - Non-root & dropped capabilities: Container runs as unprivileged UID/GID `10001:10001` with `cap_drop=["ALL"]`, read-only rootfs, and disabled network (`none`).
 >   - Plan-authorized scope: Only files and operations explicitly authorized by the `ImplementationPlan` are permitted.
->   - Security checks: Absolute path traversal, symlink escapes, drive letters, and protected paths are rejected.
+>   - Bounded Repair & Loop Detection: Repair attempts are strictly capped (default 3, hard limit 5) with SHA-256 patch hashing to eliminate infinite repair oscillations.
+>   - Human Approval Pause: High-risk strategies pause in `AWAITING_APPROVAL` rather than executing automatically.
 >
-> - **PLANNED FOR FUTURE SPRINTS**: Test Generation & Automated Debugger Loop (Sprint 6), Security & Code Review (Sprint 7), GitHub Integration & PR Shipping (Sprint 8).
+> - **PLANNED FOR FUTURE SPRINTS**: Security & Code Review (Sprint 7), GitHub Integration & PR Shipping (Sprint 8).
 
 ---
 

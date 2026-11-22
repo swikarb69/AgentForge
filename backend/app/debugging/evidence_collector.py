@@ -106,14 +106,18 @@ class DiagnosticEvidenceCollector:
 
         # 4. Extract failed test names
         failed_tests: list[str] = []
+        implicated_files: list[str] = []
         for match in self.FAILED_TEST_PATTERN.finditer(clean_text):
             test_name = match.group(1).strip()
             if test_name not in failed_tests:
                 failed_tests.append(test_name)
+            if "::" in test_name:
+                tfile = test_name.split("::")[0].strip().replace("\\", "/")
+                if tfile not in implicated_files:
+                    implicated_files.append(tfile)
 
         # 5. Extract traceback lines
         traceback_snippets: list[str] = []
-        implicated_files: list[str] = []
         implicated_symbols: list[str] = []
 
         lines = clean_text.splitlines()

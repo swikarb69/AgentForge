@@ -49,7 +49,7 @@ def test_approval_branching() -> None:
     assert sm.current_state == RepairState.AWAITING_APPROVAL
 
     sm.transition_to(RepairState.GENERATING_REPAIR, reason="Human approved")
-    assert sm.current_state == RepairState.GENERATING_REPAIR
+    assert sm.current_state.value == RepairState.GENERATING_REPAIR.value
 
 
 def test_multi_attempt_retry_loop() -> None:
@@ -64,7 +64,7 @@ def test_multi_attempt_retry_loop() -> None:
 
     # First attempt failed, retry attempt 2
     sm.transition_to(RepairState.ANALYZING, reason="Retry attempt 2")
-    assert sm.current_state == RepairState.ANALYZING
+    assert sm.current_state.value == RepairState.ANALYZING.value
     assert not sm.is_terminal()
 
     # Second attempt completes and reaches max attempts
@@ -74,7 +74,7 @@ def test_multi_attempt_retry_loop() -> None:
     sm.transition_to(RepairState.EXECUTING_REPAIR)
     sm.transition_to(RepairState.EVALUATING)
     sm.transition_to(RepairState.MAX_ATTEMPTS_REACHED, reason="Attempt limit reached")
-    assert sm.current_state == RepairState.MAX_ATTEMPTS_REACHED
+    assert sm.current_state.value == RepairState.MAX_ATTEMPTS_REACHED.value
     assert sm.is_terminal()
 
 

@@ -25,10 +25,10 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 5] Execution Sandbox Engine (COMPLETED)
     │
     ▼
-[Sprint 6] Test Generation & Automated Debugger Loop (NEXT)
+[Sprint 6] Debugging and Automatic Repair Engine (COMPLETED)
     │
     ▼
-[Sprint 7] Security & Senior Peer Code Review Engine
+[Sprint 7] Security & Senior Peer Code Review Engine (NEXT)
     │
     ▼
 [Sprint 8] GitHub Integration & PR Shipping Agent
@@ -68,9 +68,9 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Status**: **COMPLETED**
 - **Deliverables**: Execution Domain Models (`ExecutionStatus`, `ExecutionPolicy`, `ExecutionRequest`, `CommandResult`, `TestSummary`, `VerificationReport`), Security Policy Validator (`backend/app/execution/policy.py`), Isolated Ephemeral Workspace Manager with sensitive file filtering and quotas (`backend/app/execution/workspace.py`), Secure Patch Applier with traversal/protected path defenses and hash checks (`backend/app/execution/patch_applier.py`), Restricted Docker Runner with unprivileged non-root user `10001:10001`, dropped capabilities `ALL`, read-only rootfs, tmpfs, network isolation `none`, and strict No-Host-Fallback (`backend/app/execution/docker_runner.py`), Pytest and Ruff Test Executor (`backend/app/execution/test_executor.py`), Verification Engine & Report Persistence (`backend/app/execution/verification.py`), Execution Service Pipeline (`backend/app/execution/service.py`), REST APIs (`/api/v1/execution/create`, `/api/v1/execution/reports`, `/api/v1/execution/reports/{id}`), Unit, Integration & Security Test Suites, and Comprehensive Documentation (`docs/execution-sandbox.md`).
 
-### Sprint 6 — Test Generation & Automated Debugger Loop
-- **Status**: PLANNED
-- **Deliverables**: Automated test synthesis, sandboxed test executor, stack trace log parser, automated multi-turn repair loop.
+### Sprint 6 — Debugging and Automatic Repair Engine
+- **Status**: **COMPLETED**
+- **Deliverables**: Failure classification taxonomy (`FailureClassifier`), diagnostic evidence collector with secret sanitization and byte limits (`DiagnosticEvidenceCollector`), deterministic root cause analyzer (`RootCauseAnalyzer`), repair strategy engine with risk assessment (`RepairStrategyEngine`), bounded repair proposal engine reusing Sprint 4 code generation and patch validation (`RepairProposalEngine`), isolated repair evaluator (`RepairEvaluator`), bounded repair controller with loop detection and attempt caps (`BoundedRepairController`), explicit state machine (`RepairStateMachine`), debugging service (`DebuggingService`), REST APIs (`/api/v1/debugging/repair`, `/api/v1/debugging/repairs`, `/api/v1/debugging/repair/{id}`, `/api/v1/debugging/repair/{id}/history`), unit and integration test suites with repository immutability verification, comprehensive documentation (`docs/debugging-and-repair.md`).
 
 ### Sprint 7 — Security & Senior Peer Code Review Engine
 - **Status**: PLANNED

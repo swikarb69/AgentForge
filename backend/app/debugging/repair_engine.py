@@ -1,6 +1,7 @@
 """Bounded repair proposal generation engine reusing Sprint 4 code generation."""
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from backend.app.debugging.models import (
@@ -46,10 +47,19 @@ class RepairProposalEngine:
         root_cause: RootCauseAnalysis,
         evidence: DiagnosticEvidence,
         plan: ImplementationPlan,
-        source_context: SourceContext,
+        source_context: SourceContext | None = None,
+        target_repo_path: Path | str | None = None,
     ) -> RepairProposal:
         """Produce a validated RepairProposal according to strategy and bounds."""
         now_str = datetime.now(UTC).isoformat()
+
+        if source_context is None:
+            from backend.app.generation.context import SourceContextBuilder
+
+            repo_str = str(target_repo_path or ".")
+            source_context = SourceContextBuilder().build_context(
+                repository_path=repo_str, plan=plan
+            )
 
         # 1. If strategy prohibits automated code generation
         if not strategy.code_generation_permitted:

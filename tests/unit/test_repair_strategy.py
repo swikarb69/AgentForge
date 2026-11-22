@@ -115,7 +115,6 @@ def test_strategy_for_missing_dependency() -> None:
 def test_strategy_for_single_function_assertion() -> None:
     """Single-function assertion maps to MODIFY_AFFECTED_LOGIC with MEDIUM risk."""
     root_cause = RootCauseAnalysis(
-
         primary_cause=RootCauseType.TEST_EXPECTATION_MISMATCH,
         affected_files=["app/core.py"],
         affected_symbols=["run"],
