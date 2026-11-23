@@ -20,8 +20,8 @@ from backend.app.orchestration.stage_registry import (
 )
 from backend.app.orchestration.states import WorkflowStatus
 from backend.app.orchestration.storage import (
-    InMemoryWorkflowStore,
     WorkflowStore,
+    create_workflow_store,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class OrchestrationService:
         executor: WorkflowExecutor | None = None,
         recovery_manager: WorkflowRecoveryManager | None = None,
     ) -> None:
-        self.store = store or InMemoryWorkflowStore()
+        self.store = store if store is not None else create_workflow_store()
         self.stage_registry = stage_registry or create_default_stage_registry()
         self.event_bus = event_bus or WorkflowEventBus()
         self.executor = executor or WorkflowExecutor(

@@ -77,8 +77,11 @@ from backend.app.orchestration.states import (
     WorkflowStatus,
 )
 from backend.app.orchestration.storage import (
+    FileWorkflowStore,
     InMemoryWorkflowStore,
+    SqliteWorkflowStore,
     WorkflowStore,
+    create_workflow_store,
 )
 from backend.app.orchestration.transitions import (
     VALID_STAGE_TRANSITIONS,
@@ -101,6 +104,7 @@ __all__ = [
     "HumanApprovalAdapter",
     "IdempotencyConflictError",
     "ImplementationPlanningAdapter",
+    "FileWorkflowStore",
     "InMemoryWorkflowStore",
     "InvalidStageStateTransitionError",
     "InvalidWorkflowStateTransitionError",
@@ -110,6 +114,7 @@ __all__ = [
     "ReleaseNotAuthorizedError",
     "RepositoryAnalysisAdapter",
     "RetryPolicy",
+    "SqliteWorkflowStore",
     "StageDefinition",
     "StageExecutionError",
     "StageInput",
@@ -146,6 +151,7 @@ __all__ = [
     "WorkflowStore",
     "WorkflowValidationError",
     "create_default_stage_registry",
+    "create_workflow_store",
     "redact_sensitive_data",
     "verify_artifact_integrity",
 ]
