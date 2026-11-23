@@ -1,17 +1,40 @@
 services:
-  backend:
+  agentforge:
     build:
       context: .
       dockerfile: Dockerfile
+    image: agentforge:0.11.0
+    container_name: agentforge-app
     ports:
       - "8000:8000"
     environment:
-      - ENVIRONMENT=development
+      - ENVIRONMENT=production
       - APP_NAME=AgentForge
-      - APP_VERSION=0.1.0
+      - APP_VERSION=0.11.0
+      - STORAGE_BACKEND=sqlite
+      - DATABASE_URL=sqlite:////app/agentforge-storage/agentforge.db
+      - API_KEY_AUTH_ENABLED=false
+    volumes:
+      - agentforge-storage:/app/agentforge-storage
+      - agentforge-artifacts:/app/agentforge-artifacts
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 10s
+      interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
+
+volumes:
+  agentforge-storage:
+    name: agentforge-storage
+  agentforge-artifacts:
+    name: agentforge-artifacts
