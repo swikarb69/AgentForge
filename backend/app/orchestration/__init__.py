@@ -1,5 +1,16 @@
 """Central orchestration engine coordinating AgentForge engineering workflows."""
 
+from backend.app.orchestration.adapters import (
+    AutomaticRepairAdapter,
+    CodeGenerationAdapter,
+    CodeReviewAdapter,
+    ControlledReleaseAdapter,
+    ExecutionVerificationAdapter,
+    HumanApprovalAdapter,
+    ImplementationPlanningAdapter,
+    IssueAnalysisAdapter,
+    RepositoryAnalysisAdapter,
+)
 from backend.app.orchestration.context import (
     WorkflowArtifactReferences,
     WorkflowContext,
@@ -27,6 +38,17 @@ from backend.app.orchestration.models import (
     WorkflowRun,
     WorkflowStage,
 )
+from backend.app.orchestration.stage_registry import (
+    StageRegistry,
+    create_default_stage_registry,
+)
+from backend.app.orchestration.stages import (
+    RetryPolicy,
+    StageDefinition,
+    StageInput,
+    StageOutput,
+    WorkflowStageAdapter,
+)
 from backend.app.orchestration.states import (
     TERMINAL_STAGE_STATES,
     TERMINAL_WORKFLOW_STATES,
@@ -43,13 +65,27 @@ from backend.app.orchestration.transitions import (
 
 __all__ = [
     "ApprovalRequiredError",
+    "AutomaticRepairAdapter",
+    "CodeGenerationAdapter",
+    "CodeReviewAdapter",
     "ConcurrencyConflictError",
+    "ControlledReleaseAdapter",
     "ExecutionLimits",
+    "ExecutionVerificationAdapter",
+    "HumanApprovalAdapter",
+    "ImplementationPlanningAdapter",
     "InvalidStageStateTransitionError",
     "InvalidWorkflowStateTransitionError",
+    "IssueAnalysisAdapter",
     "OrchestrationError",
     "ReleaseNotAuthorizedError",
+    "RepositoryAnalysisAdapter",
+    "RetryPolicy",
+    "StageDefinition",
     "StageExecutionError",
+    "StageInput",
+    "StageOutput",
+    "StageRegistry",
     "StageStateMachine",
     "StageStatus",
     "StageType",
@@ -69,7 +105,9 @@ __all__ = [
     "WorkflowRequest",
     "WorkflowRun",
     "WorkflowStage",
+    "WorkflowStageAdapter",
     "WorkflowStateMachine",
     "WorkflowStatus",
     "WorkflowValidationError",
+    "create_default_stage_registry",
 ]
