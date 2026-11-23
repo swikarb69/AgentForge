@@ -58,6 +58,12 @@ class StageRegistry:
             )
         return self._adapters[stage_type]
 
+    def get(
+        self, stage_type: StageType
+    ) -> tuple[StageDefinition, WorkflowStageAdapter]:
+        """Retrieve definition and adapter pair for a registered stage."""
+        return self.get_definition(stage_type), self.get_adapter(stage_type)
+
     def list_stages(self) -> list[StageDefinition]:
         """Return all registered stage definitions in topological order."""
         order = self.get_execution_order()

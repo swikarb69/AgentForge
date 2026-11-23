@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from backend.app.orchestration.context import WorkflowContext
 from backend.app.orchestration.models import (
@@ -33,10 +33,43 @@ class RetryPolicy(BaseModel):
         ge=1.0,
         description="Backoff factor multiplied on each subsequent retry",
     )
+    max_delay_seconds: float = Field(
+        default=60.0,
+        ge=0.0,
+        description="Upper bound for exponential backoff delay in seconds",
+    )
     retryable_error_types: list[str] = Field(
         default_factory=list,
         description="List of exception or error names eligible for retry",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _remap_aliases(cls, data: Any) -> Any:
+        """Allow backwards-compatible aliases for retry parameters."""
+        if isinstance(data, dict):
+            if "max_retries" in data and "max_attempts" not in data:
+                data["max_attempts"] = data.pop("max_retries")
+            if "backoff_factor" in data and "backoff_multiplier" not in data:
+                data["backoff_multiplier"] = data.pop("backoff_factor")
+            if "retryable_exceptions" in data and "retryable_error_types" not in data:
+                data["retryable_error_types"] = data.pop("retryable_exceptions")
+        return data
+
+    @property
+    def max_retries(self) -> int:
+        """Alias returning max_attempts."""
+        return self.max_attempts
+
+    @property
+    def backoff_factor(self) -> float:
+        """Alias returning backoff_multiplier."""
+        return self.backoff_multiplier
+
+    @property
+    def retryable_exceptions(self) -> list[str]:
+        """Alias returning retryable_error_types."""
+        return self.retryable_error_types
 
 
 class StageDefinition(BaseModel):
@@ -61,7 +94,7 @@ class StageDefinition(BaseModel):
     )
     timeout_seconds: int = Field(
         default=300,
-        ge=10,
+        ge=1,
         le=3600,
         description="Maximum execution timeout for this stage in seconds",
     )

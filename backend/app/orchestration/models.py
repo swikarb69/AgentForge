@@ -32,7 +32,7 @@ class ExecutionLimits(BaseModel):
     workflow_timeout_seconds: int = Field(
         default=1800,
         ge=60,
-        le=14400,
+        le=86400,
         description="Overall workflow timeout duration in seconds",
     )
     max_repair_attempts: int = Field(
@@ -66,6 +66,10 @@ class WorkflowConfiguration(BaseModel):
     custom_settings: dict[str, Any] = Field(
         default_factory=dict,
         description="Arbitrary stage-specific custom configuration overrides",
+    )
+    limits: ExecutionLimits = Field(
+        default_factory=ExecutionLimits,
+        description="Resource bounds and execution limits",
     )
 
 

@@ -1,10 +1,12 @@
 """Validated execution context and artifact reference tracking for workflows."""
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from backend.app.orchestration.models import WorkflowConfiguration
 from backend.app.orchestration.states import StageType
 
 
@@ -98,12 +100,20 @@ class WorkflowContext(BaseModel):
     repository_id: str = Field(
         description="Target repository reference or path",
     )
+    repository_path: Path | None = Field(
+        default=None,
+        description="Optional local filesystem path to repository",
+    )
     issue_reference: str = Field(
         description="Target issue identifier, URL, or problem statement",
     )
     target_branch: str = Field(
         default="main",
         description="Target base branch for release candidate pull request",
+    )
+    configuration: WorkflowConfiguration = Field(
+        default_factory=WorkflowConfiguration,
+        description="Workflow configuration options and limits",
     )
     artifacts: WorkflowArtifactReferences = Field(
         default_factory=WorkflowArtifactReferences,

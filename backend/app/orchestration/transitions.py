@@ -76,6 +76,7 @@ VALID_STAGE_TRANSITIONS: dict[StageStatus, set[StageStatus]] = {
         StageStatus.COMPLETED,
         StageStatus.FAILED,
         StageStatus.WAITING,
+        StageStatus.SKIPPED,
         StageStatus.CANCELLED,
     },
     StageStatus.WAITING: {

@@ -30,6 +30,7 @@ from backend.app.orchestration.exceptions import (
     WorkflowPausedError,
     WorkflowValidationError,
 )
+from backend.app.orchestration.executor import WorkflowExecutor
 from backend.app.orchestration.models import (
     ExecutionLimits,
     StateTransitionRecord,
@@ -100,6 +101,7 @@ __all__ = [
     "WorkflowConfiguration",
     "WorkflowContext",
     "WorkflowExecutionError",
+    "WorkflowExecutor",
     "WorkflowNotFoundError",
     "WorkflowPausedError",
     "WorkflowRequest",
