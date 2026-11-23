@@ -5,6 +5,28 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-23
+
+### Added - Sprint 9: End-to-End Agent Orchestration Engine
+- **Workflow Domain Models & Execution Context**: Strongly typed schemas for `WorkflowRun`, `WorkflowStage`, `WorkflowRequest`, `WorkflowConfiguration`, `ExecutionLimits`, `StateTransitionRecord`, and `WorkflowArtifactReferences` with cryptographic SHA-256 fingerprint tracking (`backend/app/orchestration/models.py`, `backend/app/orchestration/context.py`).
+- **Deterministic State Machines**: Lifecycle state machines for workflow runs (`WorkflowStateMachine`) and individual stages (`StageStateMachine`) with strict monotonic transition rules and invariant validation (`backend/app/orchestration/states.py`, `backend/app/orchestration/transitions.py`).
+- **Stage Registry & Subsystem Adapters**: Pluggable stage registry (`StageRegistry`) with topological dependency resolution and concrete stage adapters integrating Sprints 1–8 (`RepositoryAnalysisAdapter`, `IssueAnalysisAdapter`, `ImplementationPlanningAdapter`, `CodeGenerationAdapter`, `ExecutionVerificationAdapter`, `AutomaticRepairAdapter`, `CodeReviewAdapter`, `HumanApprovalAdapter`, `ControlledReleaseAdapter`) (`backend/app/orchestration/stages.py`, `backend/app/orchestration/stage_registry.py`, `backend/app/orchestration/adapters.py`).
+- **Sequential DAG Execution Engine**: Production execution engine (`WorkflowExecutor`) supporting topological ordering, stage/workflow timeouts, exponential backoff retries, conditional stage skipping, and human approval pauses (`backend/app/orchestration/executor.py`).
+- **Persistence & Optimistic Concurrency**: Abstract storage interface (`WorkflowStore`) and reference implementation (`InMemoryWorkflowStore`) with version-based optimistic locking, unique idempotency keys, and granular per-workflow exclusive locks (`backend/app/orchestration/storage.py`).
+- **Recovery Manager & Artifact Integrity**: Resilient workflow recovery engine (`WorkflowRecoveryManager`) supporting pause, resume, cancel, crashed run recovery, and cryptographic SHA-256 artifact integrity verification (`backend/app/orchestration/recovery.py`).
+- **Event-Driven Telemetry Bus**: Asynchronous pub/sub event bus (`WorkflowEventBus`) coordinating 16 distinct lifecycle events with recursive secret redaction (`redact_sensitive_data`) masking API keys, bearer tokens, and private credentials (`backend/app/orchestration/events.py`, `backend/app/orchestration/event_bus.py`).
+- **Orchestration Service Facade & REST APIs**: Central orchestration coordinator (`OrchestrationService`) and FastAPI endpoints mounted at `/api/v1/workflows` (`POST /`, `GET /`, `GET /{id}`, `GET /{id}/context`, `POST /{id}/pause`, `POST /{id}/resume`, `POST /{id}/cancel`, `GET /{id}/events`) (`backend/app/orchestration/service.py`, `backend/app/api/routes/workflows.py`).
+- **Integration Test Suite & Documentation**: Comprehensive unit and integration test suites with 88 tests and 87.58% coverage, plus detailed technical guide (`docs/end-to-end-orchestration.md`).
+
+## [0.9.0] - 2026-11-23
+
+### Added - Sprint 8: Human Approval & Controlled Release Engine
+- **Human Authorization Layer**: Explicit human approval boundary with separation of duties, role-based authorization, risk-tiered policies (LOW to CRITICAL), and expiration controls (`backend/app/approval/`).
+- **Tamper-Evident Audit Trail**: Append-only SHA-256 hash-chained audit store with recursive secret sanitization and integrity verification.
+- **13-Point Release Readiness Engine**: Comprehensive validation across tests, reviews, approvals, policy adherence, git hygiene, and secret scanners.
+- **Controlled Release & Zero Auto-Merge**: Controlled GitHub/Mock release engine strictly creating release candidate branches and pull requests, never merging to default branches.
+- **REST APIs & Test Suite**: 8 REST endpoints at `/api/v1/approval/` and 100+ passing tests.
+
 ## [0.8.0] - 2026-11-22
 
 ### Added - Sprint 7: Code Review & Quality Assurance Engine

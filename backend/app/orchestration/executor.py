@@ -166,10 +166,15 @@ class WorkflowExecutor:
                     )
                     return run
 
-            # Skip stage if already completed previously (e.g. on resume)
-            if stage_type in run.completed_stages:
+            # Skip stage if already completed or skipped previously (e.g. on resume)
+            existing_stage = run.get_stage(stage_type)
+            if stage_type in run.completed_stages or (
+                existing_stage is not None
+                and existing_stage.status
+                in (StageStatus.COMPLETED, StageStatus.SKIPPED)
+            ):
                 logger.info(
-                    "Skipping already completed stage '%s' for workflow '%s'",
+                    "Skipping already completed/skipped stage '%s' for workflow '%s'",
                     stage_type.value,
                     run.workflow_id,
                 )

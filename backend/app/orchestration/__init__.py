@@ -54,6 +54,10 @@ from backend.app.orchestration.recovery import (
     WorkflowRecoveryManager,
     verify_artifact_integrity,
 )
+from backend.app.orchestration.service import (
+    OrchestrationService,
+    get_orchestration_service,
+)
 from backend.app.orchestration.stage_registry import (
     StageRegistry,
     create_default_stage_registry,
@@ -93,6 +97,7 @@ __all__ = [
     "EventHandler",
     "ExecutionLimits",
     "ExecutionVerificationAdapter",
+    "get_orchestration_service",
     "HumanApprovalAdapter",
     "IdempotencyConflictError",
     "ImplementationPlanningAdapter",
@@ -101,6 +106,7 @@ __all__ = [
     "InvalidWorkflowStateTransitionError",
     "IssueAnalysisAdapter",
     "OrchestrationError",
+    "OrchestrationService",
     "ReleaseNotAuthorizedError",
     "RepositoryAnalysisAdapter",
     "RetryPolicy",

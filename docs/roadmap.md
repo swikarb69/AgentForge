@@ -34,10 +34,13 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 8] Human Approval & Controlled Release Engine (COMPLETED)
     │
     ▼
-[Sprint 9] Benchmark Evaluation Suite & Token/Cost Analytics (NEXT)
+[Sprint 9] End-to-End Agent Orchestration Engine (COMPLETED)
     │
     ▼
-[Sprint 10] Developer UI Dashboard & Final Polish
+[Sprint 10] Benchmark Evaluation Suite & Token/Cost Analytics
+    │
+    ▼
+[Sprint 11] Developer UI Dashboard & Final Polish
 ```
 
 ---
@@ -80,10 +83,14 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Status**: **COMPLETED**
 - **Deliverables**: Domain models (`ApprovalRequest`, `ApprovalDecision`, `ArtifactBinding`, `ApprovalPolicy`, `ApprovalStatus`, `ApprovalRiskLevel`), deterministic state machine (`ApprovalStateMachine`), user identity and authorization engine (`UserIdentity`, `AuthorizationEngine`, `LocalTestIdentityProvider`, `ProductionIdentityProvider`), append-only SHA-256 hash-chained audit trail with secret redaction (`AuditTrailStore`), on-read and background expiration manager (`ExpirationManager`), approval request service (`ApprovalRequestService`), decision service (`ApprovalDecisionService`), 13-point release readiness validation engine (`ReleaseReadinessEngine`), controlled release providers (`ReleaseProvider`, `MockReleaseProvider`, `GitHubReleaseProvider`), controlled release orchestration service with zero-auto-merge enforcement (`ControlledReleaseService`), unified facade service (`ApprovalService`), FastAPI REST APIs (`/api/v1/approval/requests`, `/api/v1/approval/requests/{id}/decide`, `/api/v1/approval/requests/{id}/revoke`, `/api/v1/approval/requests/{id}/readiness`, `/api/v1/approval/requests/{id}/release`, `/api/v1/approval/requests/{id}/audit`, `/api/v1/approval/requests/{id}/audit/verify`, `/api/v1/approval/releases`), unit and integration test suites, and technical documentation (`docs/approval-and-release.md`).
 
-### Sprint 9 — Benchmark Evaluation Suite & Token/Cost Analytics
+### Sprint 9 — End-to-End Agent Orchestration Engine
+- **Status**: **COMPLETED**
+- **Deliverables**: End-to-end workflow domain models (`WorkflowRun`, `WorkflowStage`, `WorkflowRequest`, `WorkflowConfiguration`, `ExecutionLimits`), deterministic state machines for workflows (`WorkflowStateMachine`) and individual stages (`StageStateMachine`), validated context and cryptographic artifact reference tracking (`WorkflowContext`, `WorkflowArtifactReferences`), topological stage registry (`StageRegistry`) and adapters for Sprints 1–8, central sequential DAG execution engine (`WorkflowExecutor`) with bounded retries, backoff, stage and workflow timeouts, and conditional skipping, persistence and storage abstraction (`WorkflowStore`, `InMemoryWorkflowStore`) with optimistic locking, idempotency tracking, and exclusive locks, recovery manager (`WorkflowRecoveryManager`) supporting pause, resume, cancel, crash recovery, and SHA-256 artifact integrity verification, asynchronous event bus (`WorkflowEventBus`) with 16 event types and recursive secret redaction, unified orchestration service facade (`OrchestrationService`), FastAPI REST API endpoints (`/api/v1/workflows`), comprehensive unit and integration test suites, and technical documentation (`docs/end-to-end-orchestration.md`).
+
+### Sprint 10 — Benchmark Evaluation Suite & Token/Cost Analytics
 - **Status**: PLANNED
 - **Deliverables**: Benchmark task suite, latency metric tracker, token counter, financial cost estimation engine.
 
-### Sprint 10 — Developer UI Dashboard & Final Polish
+### Sprint 11 — Developer UI Dashboard & Final Polish
 - **Status**: PLANNED
 - **Deliverables**: Developer UI dashboard, real-time agent state timeline, live logs view, end-to-end user testing, v1.0.0 release.

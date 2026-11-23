@@ -12,6 +12,7 @@ from backend.app.api.routes import (
     planning,
     repositories,
     review,
+    workflows,
 )
 from backend.app.core.config import settings
 
@@ -52,6 +53,7 @@ app.include_router(execution.router)
 app.include_router(debugging.router)
 app.include_router(review.router)
 app.include_router(approval.router)
+app.include_router(workflows.router)
 
 
 @app.get(

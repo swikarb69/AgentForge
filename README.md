@@ -19,11 +19,11 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 ## Current Project Status
 
 > [!NOTE]
-> **Sprint 8 — Human Approval & Controlled Release Engine (Current Release: v0.9.0)**
+> **Sprint 9 — End-to-End Agent Orchestration Engine (Current Release: v0.10.0)**
 >
 > AgentForge is being built incrementally using an **Agile + Scrum-inspired iterative methodology**.
 >
-> **Implemented in Sprints 0 through 8**:
+> **Implemented in Sprints 0 through 9**:
 > - Core FastAPI application foundation (`backend/app/main.py`) & Pydantic settings config (`backend/app/core/config.py`).
 > - **Repository Intelligence Subsystem**: Scanner, AST Parser, Code Chunker, In-Memory Repository Index, and Deterministic Search (`backend/app/repository/`, `backend/app/parsing/`, `backend/app/indexing/`).
 > - **Issue Intelligence Subsystem**: Issue Parser (`IssueParser`), Requirement Extractor (`RequirementExtractor`), Entity & Reference Extractor (`ReferenceExtractor`), and Repository-Aware Matcher (`IssueMatcher`) (`backend/app/issue/`).
@@ -34,8 +34,9 @@ $$\text{Understand} \longrightarrow \text{Plan} \longrightarrow \text{Implement}
 > - **Debugging & Automatic Repair Subsystem**: Failure classification, evidence collection & stack trace attribution, root cause analysis engine, bounded repair strategy engine, bounded repair proposal generation, isolated ephemeral sandbox verification, loop & duplicate patch detection via SHA-256 hashing, human review escalation for environment defects, and high-risk approval pauses (`backend/app/debugging/`).
 > - **Code Review & Quality Assurance Subsystem**: 24 built-in deterministic rules across 7 categories, deterministic AST static analyzer, security vulnerability pattern detector (SQL injection, shell injection, code execution, secret leakage with redaction, path traversal, deserialization, tempfiles), architecture analyzer (circular import DFS cycle detection, unidirectional layer boundaries, unapproved dependencies, coupling), regression analyzer (plan scope compliance, acceptance criteria verification, sandbox verification defects, test assertion validation), evidence collector with SHA-256 hashing, explainable 0-100 quality scoring, gating state machine (`APPROVED`, `APPROVED_WITH_COMMENTS`, `REQUIRES_CHANGES`, `BLOCKED`), markdown report generation, and repository immutability (`backend/app/review/`).
 > - **Human Approval & Controlled Release Subsystem**: Explicit human authorization boundary, separation of duties, role-based & risk-tiered approval policies (LOW, MEDIUM, HIGH, CRITICAL), deterministic state machine, on-read & sweep expiration management, SHA-256 hash-chained tamper-evident audit trail with secret sanitization, 13-point release readiness validation engine, controlled release providers (Mock & GitHub REST), zero-auto-merge enforcement (strictly creates release candidate branches and pull requests), and release tracking (`backend/app/approval/`).
-> - **REST APIs**: Endpoints across Repositories, Issues, Planning, Generation, Execution, Debugging, Reviews, and Human Approval & Controlled Release (`/api/v1/approval/requests`, `/api/v1/approval/requests/{id}/decide`, `/api/v1/approval/requests/{id}/readiness`, `/api/v1/approval/requests/{id}/release`, `/api/v1/approval/requests/{id}/audit/verify`, `/api/v1/approval/releases`).
-> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 100+ passing approval tests and $\ge 90\%$ subsystem coverage.
+> - **End-to-End Orchestration Engine Subsystem**: Central workflow orchestration control plane coordinating all 9 pipeline stages, state machines (`WorkflowStateMachine`, `StageStateMachine`), validated execution context and cryptographic artifact binding (`WorkflowContext`, `WorkflowArtifactReferences`), topological DAG execution engine with exponential backoff and timeouts (`WorkflowExecutor`), storage engine with optimistic locking and idempotency tracking (`WorkflowStore`, `InMemoryWorkflowStore`), recovery and pause/resume manager with SHA-256 integrity verification (`WorkflowRecoveryManager`), event-driven telemetry bus (`WorkflowEventBus`) with recursive secret redaction, and unified facade service (`OrchestrationService`) (`backend/app/orchestration/`).
+> - **REST APIs**: Endpoints across Repositories, Issues, Planning, Generation, Execution, Debugging, Reviews, Human Approval, and Workflows (`/api/v1/workflows`, `/api/v1/workflows/{id}`, `/api/v1/workflows/{id}/context`, `/api/v1/workflows/{id}/pause`, `/api/v1/workflows/{id}/resume`, `/api/v1/workflows/{id}/cancel`, `/api/v1/workflows/{id}/events`).
+> - **Testing Architecture**: Pytest unit, integration, and security test suite (`tests/`) with 88 passing orchestration tests and $\ge 87.5\%$ orchestration subsystem coverage.
 > - **CI/CD & Security**: GitHub Actions pipeline (`.github/workflows/ci.yml`) enforcing Ruff, MyPy, Bandit, and Pytest.
 
 ---
@@ -103,7 +104,9 @@ AgentForge/
 │       │       ├── generation.py      # Code Generation APIs
 │       │       ├── issues.py          # Issue Intelligence APIs
 │       │       ├── planning.py        # Planning Engine APIs
-│       │       └── repositories.py    # Repository Analysis & Search APIs
+│       │       ├── repositories.py    # Repository Analysis & Search APIs
+│       │       ├── reviews.py         # Code Review APIs
+│       │       └── workflows.py       # Central Orchestration APIs
 │       ├── core/
 │       │   └── config.py              # Pydantic Settings
 │       ├── debugging/
@@ -150,6 +153,19 @@ AgentForge/
 │       │   ├── risk.py                # Risk & assumption analyzer
 │       │   ├── service.py             # Planning service
 │       │   └── validator.py           # Plan validator
+│       ├── orchestration/
+│       │   ├── adapters.py            # Stage adapters for Sprints 1–8
+│       │   ├── context.py             # Validated context & artifact references
+│       │   ├── event_bus.py           # Asynchronous pub/sub event bus
+│       │   ├── events.py              # Telemetry events & secret sanitization
+│       │   ├── executor.py            # Sequential DAG execution engine
+│       │   ├── models.py              # Workflow domain models
+│       │   ├── recovery.py            # Recovery manager & integrity verification
+│       │   ├── service.py             # Orchestration service facade
+│       │   ├── stage_registry.py      # Topological stage registry
+│       │   ├── states.py              # Workflow & stage status enumerations
+│       │   ├── storage.py             # WorkflowStore & concurrency locking
+│       │   └── transitions.py         # State machine transition rules
 │       └── repository/
 │           ├── analyzer.py            # High-level RepositoryAnalyzer pipeline
 │           ├── filters.py             # Path validation & ignore rules
@@ -177,6 +193,10 @@ AgentForge/
 │   ├── planning-engine.md
 │   ├── code-generation.md
 │   ├── execution-sandbox.md
+│   ├── debugging-and-repair.md
+│   ├── code-review-and-quality.md
+│   ├── approval-and-release.md
+│   ├── end-to-end-orchestration.md
 │   ├── security.md
 │   ├── testing.md
 │   ├── deployment.md
