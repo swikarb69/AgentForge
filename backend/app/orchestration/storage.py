@@ -219,10 +219,14 @@ class InMemoryWorkflowStore(WorkflowStore):
 
         try:
             with anyio.fail_after(timeout_seconds):
-                async with wlock:
-                    yield
+                await wlock.acquire()
         except TimeoutError as err:
             raise ConcurrencyConflictError(
                 f"Timed out waiting for lock on workflow '{workflow_id}' "
                 f"after {timeout_seconds}s"
             ) from err
+
+        try:
+            yield
+        finally:
+            wlock.release()

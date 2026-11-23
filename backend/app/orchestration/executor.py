@@ -3,10 +3,13 @@
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import anyio
 
 from backend.app.orchestration.context import WorkflowContext
+from backend.app.orchestration.event_bus import WorkflowEventBus
+from backend.app.orchestration.events import WorkflowEvent, WorkflowEventType
 from backend.app.orchestration.exceptions import (
     WorkflowExecutionError,
 )
@@ -28,6 +31,7 @@ from backend.app.orchestration.stages import (
 from backend.app.orchestration.states import (
     TERMINAL_STAGE_STATES,
     StageStatus,
+    StageType,
     WorkflowStatus,
 )
 from backend.app.orchestration.transitions import (
@@ -56,10 +60,37 @@ class WorkflowExecutor:
         stage_registry: StageRegistry | None = None,
         workflow_state_machine: type[WorkflowStateMachine] = WorkflowStateMachine,
         stage_state_machine: type[StageStateMachine] = StageStateMachine,
+        event_bus: WorkflowEventBus | None = None,
     ) -> None:
         self.stage_registry = stage_registry or create_default_stage_registry()
         self.workflow_sm = workflow_state_machine
         self.stage_sm = stage_state_machine
+        self.event_bus = event_bus
+
+    async def _emit(
+        self,
+        event_type: WorkflowEventType,
+        workflow_id: str,
+        stage_type: StageType | None = None,
+        duration_ms: float | None = None,
+        actor: str | None = None,
+        payload: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Publish workflow event if event bus is configured."""
+        if self.event_bus is None:
+            return
+        await self.event_bus.publish(
+            WorkflowEvent(
+                event_type=event_type,
+                workflow_id=workflow_id,
+                stage_type=stage_type,
+                duration_ms=duration_ms,
+                actor=actor,
+                payload=payload or {},
+                error=error,
+            )
+        )
 
     async def execute(self, run: WorkflowRun, context: WorkflowContext) -> WorkflowRun:
         """Execute workflow run sequentially across all stages in DAG order."""
@@ -83,6 +114,15 @@ class WorkflowExecutor:
             self.workflow_sm.transition(
                 run, WorkflowStatus.RUNNING, reason="Starting workflow execution"
             )
+            await self._emit(
+                WorkflowEventType.WORKFLOW_STARTED,
+                run.workflow_id,
+                actor=run.requested_by,
+                payload={
+                    "repository_reference": run.repository_reference,
+                    "issue_reference": run.issue_reference,
+                },
+            )
 
         execution_order = self.stage_registry.get_execution_order()
 
@@ -99,6 +139,11 @@ class WorkflowExecutor:
                         WorkflowStatus.CANCELLED,
                         reason=run.cancellation_reason or "Cancelled by user",
                     )
+                await self._emit(
+                    WorkflowEventType.WORKFLOW_CANCELLED,
+                    run.workflow_id,
+                    error=run.cancellation_reason,
+                )
                 return run
 
             # Check overall workflow timeout
@@ -112,6 +157,12 @@ class WorkflowExecutor:
                     run.failed_stage = stage_type
                     self.workflow_sm.transition(
                         run, WorkflowStatus.FAILED, reason=timeout_msg
+                    )
+                    await self._emit(
+                        WorkflowEventType.WORKFLOW_FAILED,
+                        run.workflow_id,
+                        stage_type=stage_type,
+                        error=timeout_msg,
                     )
                     return run
 
@@ -129,6 +180,13 @@ class WorkflowExecutor:
 
             stage_def, adapter = self.stage_registry.get(stage_type)
 
+            stage_start_time = datetime.now(UTC)
+            await self._emit(
+                WorkflowEventType.STAGE_STARTED,
+                run.workflow_id,
+                stage_type=stage_type,
+            )
+
             output = await self._execute_stage_with_retries(
                 run=run,
                 stage=stage,
@@ -136,6 +194,9 @@ class WorkflowExecutor:
                 adapter=adapter,
                 context=context,
             )
+            duration_ms = (
+                datetime.now(UTC) - stage_start_time
+            ).total_seconds() * 1000.0
 
             # 3. Handle stage outcome
             if output.should_skip or output.status == StageStatus.SKIPPED:
@@ -150,6 +211,13 @@ class WorkflowExecutor:
                     run.workflow_id,
                     output.skip_reason,
                 )
+                await self._emit(
+                    WorkflowEventType.STAGE_SKIPPED,
+                    run.workflow_id,
+                    stage_type=stage_type,
+                    duration_ms=duration_ms,
+                    payload={"skip_reason": output.skip_reason},
+                )
                 continue
 
             if output.status == StageStatus.COMPLETED:
@@ -161,6 +229,13 @@ class WorkflowExecutor:
                     "Stage '%s' completed successfully for workflow '%s'",
                     stage_type.value,
                     run.workflow_id,
+                )
+                await self._emit(
+                    WorkflowEventType.STAGE_COMPLETED,
+                    run.workflow_id,
+                    stage_type=stage_type,
+                    duration_ms=duration_ms,
+                    payload={"artifacts": output.produced_artifact_ids},
                 )
                 continue
 
@@ -176,6 +251,12 @@ class WorkflowExecutor:
                     "Workflow '%s' paused at stage '%s' awaiting human signoff",
                     run.workflow_id,
                     stage_type.value,
+                )
+                await self._emit(
+                    WorkflowEventType.APPROVAL_REQUESTED,
+                    run.workflow_id,
+                    stage_type=stage_type,
+                    duration_ms=duration_ms,
                 )
                 return run
 
@@ -193,6 +274,19 @@ class WorkflowExecutor:
                     stage_type.value,
                     err,
                 )
+                await self._emit(
+                    WorkflowEventType.STAGE_FAILED,
+                    run.workflow_id,
+                    stage_type=stage_type,
+                    duration_ms=duration_ms,
+                    error=err,
+                )
+                await self._emit(
+                    WorkflowEventType.WORKFLOW_FAILED,
+                    run.workflow_id,
+                    stage_type=stage_type,
+                    error=err,
+                )
                 return run
 
         # 4. Final completion
@@ -204,6 +298,10 @@ class WorkflowExecutor:
                 reason="All pipeline stages concluded successfully",
             )
             logger.info("Workflow '%s' completed end-to-end", run.workflow_id)
+            await self._emit(
+                WorkflowEventType.WORKFLOW_COMPLETED,
+                run.workflow_id,
+            )
 
         return run
 
@@ -268,6 +366,16 @@ class WorkflowExecutor:
                                 WorkflowStatus.RETRYING,
                                 reason=f"Retrying stage {stage.stage_type.value}",
                             )
+                        await self._emit(
+                            WorkflowEventType.STAGE_RETRY,
+                            run.workflow_id,
+                            stage_type=stage.stage_type,
+                            payload={
+                                "attempt": attempt,
+                                "delay_seconds": delay,
+                                "error": output.error,
+                            },
+                        )
                         await anyio.sleep(delay)
                         if run.status == WorkflowStatus.RETRYING:
                             self.workflow_sm.transition(

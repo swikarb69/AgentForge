@@ -15,6 +15,15 @@ from backend.app.orchestration.context import (
     WorkflowArtifactReferences,
     WorkflowContext,
 )
+from backend.app.orchestration.event_bus import (
+    EventHandler,
+    WorkflowEventBus,
+)
+from backend.app.orchestration.events import (
+    WorkflowEvent,
+    WorkflowEventType,
+    redact_sensitive_data,
+)
 from backend.app.orchestration.exceptions import (
     ApprovalRequiredError,
     ConcurrencyConflictError,
@@ -81,6 +90,7 @@ __all__ = [
     "CodeReviewAdapter",
     "ConcurrencyConflictError",
     "ControlledReleaseAdapter",
+    "EventHandler",
     "ExecutionLimits",
     "ExecutionVerificationAdapter",
     "HumanApprovalAdapter",
@@ -113,6 +123,9 @@ __all__ = [
     "WorkflowCancelledError",
     "WorkflowConfiguration",
     "WorkflowContext",
+    "WorkflowEvent",
+    "WorkflowEventBus",
+    "WorkflowEventType",
     "WorkflowExecutionError",
     "WorkflowExecutor",
     "WorkflowNotFoundError",
@@ -127,5 +140,6 @@ __all__ = [
     "WorkflowStore",
     "WorkflowValidationError",
     "create_default_stage_registry",
+    "redact_sensitive_data",
     "verify_artifact_integrity",
 ]

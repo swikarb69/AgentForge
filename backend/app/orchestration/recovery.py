@@ -4,8 +4,11 @@ import hashlib
 import logging
 import re
 from pathlib import Path
+from typing import Any
 
 from backend.app.orchestration.context import WorkflowContext
+from backend.app.orchestration.event_bus import WorkflowEventBus
+from backend.app.orchestration.events import WorkflowEvent, WorkflowEventType
 from backend.app.orchestration.exceptions import (
     ConcurrencyConflictError,
     InvalidWorkflowStateTransitionError,
@@ -150,16 +153,44 @@ class WorkflowRecoveryManager:
         executor: WorkflowExecutor | None = None,
         workflow_state_machine: type[WorkflowStateMachine] = WorkflowStateMachine,
         stage_state_machine: type[StageStateMachine] = StageStateMachine,
+        event_bus: WorkflowEventBus | None = None,
     ) -> None:
         self.store = store
         self.stage_registry = stage_registry or create_default_stage_registry()
+        self.event_bus = event_bus
         self.executor = executor or WorkflowExecutor(
             stage_registry=self.stage_registry,
             workflow_state_machine=workflow_state_machine,
             stage_state_machine=stage_state_machine,
+            event_bus=self.event_bus,
         )
         self.workflow_sm = workflow_state_machine
         self.stage_sm = stage_state_machine
+
+    async def _emit(
+        self,
+        event_type: WorkflowEventType,
+        workflow_id: str,
+        stage_type: StageType | None = None,
+        duration_ms: float | None = None,
+        actor: str | None = None,
+        payload: dict[str, Any] | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Publish workflow event if event bus is configured."""
+        if self.event_bus is None:
+            return
+        await self.event_bus.publish(
+            WorkflowEvent(
+                event_type=event_type,
+                workflow_id=workflow_id,
+                stage_type=stage_type,
+                duration_ms=duration_ms,
+                actor=actor,
+                payload=payload or {},
+                error=error,
+            )
+        )
 
     async def pause(
         self,
@@ -189,6 +220,12 @@ class WorkflowRecoveryManager:
                 actor=actor,
             )
             await self.store.save(run, context)
+            await self._emit(
+                WorkflowEventType.WORKFLOW_PAUSED,
+                workflow_id,
+                actor=actor,
+                payload={"reason": reason},
+            )
             logger.info("Paused workflow '%s': %s", workflow_id, reason)
             return run
 
@@ -242,6 +279,12 @@ class WorkflowRecoveryManager:
                     self.stage_sm.transition(stage, StageStatus.CANCELLED)
 
             await self.store.save(run, context)
+            await self._emit(
+                WorkflowEventType.WORKFLOW_CANCELLED,
+                workflow_id,
+                actor=actor,
+                payload={"reason": reason},
+            )
             logger.info("Cancelled workflow '%s': %s", workflow_id, reason)
             return run
 
@@ -283,6 +326,11 @@ class WorkflowRecoveryManager:
                     actor=actor,
                 )
                 await self.store.save(run, context)
+                await self._emit(
+                    WorkflowEventType.WORKFLOW_RESUMED,
+                    workflow_id,
+                    actor=actor,
+                )
 
             # 3. Execute remaining stages
             updated_run = await self.executor.execute(run, context)
