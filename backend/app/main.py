@@ -3,8 +3,9 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -23,12 +24,21 @@ from backend.app.api.routes import (
     workflows,
 )
 from backend.app.core.config import settings
+from backend.app.core.telemetry import (
+    CorrelationIdMiddleware,
+    MetricsResponse,
+    ReadinessResponse,
+    check_readiness,
+    collect_metrics,
+)
 
 logger = logging.getLogger(__name__)
 
 PUBLIC_EXEMPT_PATHS: set[str] = {
     "/api/v1/health",
     "/api/v1/version",
+    "/api/v1/ready",
+    "/api/v1/metrics",
     "/docs",
     "/redoc",
     "/openapi.json",
@@ -144,6 +154,7 @@ app = FastAPI(
 
 # Register Middlewares (added in order: inner -> outer)
 app.add_middleware(APIKeyAuthMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -185,3 +196,33 @@ def get_health() -> HealthResponse:
 def get_version() -> VersionResponse:
     """Return application name and version details."""
     return VersionResponse(name=settings.APP_NAME, version=settings.APP_VERSION)
+
+
+@app.get(
+    "/api/v1/ready",
+    response_model=ReadinessResponse,
+    summary="Readiness Probe",
+    tags=["System"],
+)
+async def get_readiness(response: Response) -> ReadinessResponse:
+    """Return component readiness check results."""
+    ready, checks = await check_readiness()
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    return ReadinessResponse(
+        ready=ready,
+        timestamp=datetime.now(UTC).isoformat(),
+        environment=settings.ENVIRONMENT,
+        checks=checks,
+    )
+
+
+@app.get(
+    "/api/v1/metrics",
+    response_model=MetricsResponse,
+    summary="Operational Metrics",
+    tags=["System"],
+)
+async def get_metrics() -> MetricsResponse:
+    """Return runtime operational metrics."""
+    return await collect_metrics()
