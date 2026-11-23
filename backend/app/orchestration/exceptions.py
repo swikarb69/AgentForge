@@ -51,3 +51,11 @@ class ReleaseNotAuthorizedError(OrchestrationError):
 
 class ConcurrencyConflictError(OrchestrationError):
     """Raised when concurrent operations conflict on the same workflow run."""
+
+
+class WorkflowArtifactIntegrityError(OrchestrationError):
+    """Raised when artifact integrity verification fails during recovery or resume."""
+
+
+class IdempotencyConflictError(ConcurrencyConflictError):
+    """Raised when duplicate workflow execution is attempted with an existing key."""

@@ -274,6 +274,15 @@ class WorkflowRun(BaseModel):
         default_factory=dict,
         description="Workflow run metadata and telemetry tags",
     )
+    idempotency_key: str | None = Field(
+        default=None,
+        description="Client idempotency key preventing duplicate execution",
+    )
+    version: int = Field(
+        default=1,
+        ge=1,
+        description="Optimistic concurrency version counter",
+    )
 
     @property
     def is_terminal(self) -> bool:

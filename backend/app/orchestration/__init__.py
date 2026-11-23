@@ -18,11 +18,13 @@ from backend.app.orchestration.context import (
 from backend.app.orchestration.exceptions import (
     ApprovalRequiredError,
     ConcurrencyConflictError,
+    IdempotencyConflictError,
     InvalidStageStateTransitionError,
     InvalidWorkflowStateTransitionError,
     OrchestrationError,
     ReleaseNotAuthorizedError,
     StageExecutionError,
+    WorkflowArtifactIntegrityError,
     WorkflowBlockedError,
     WorkflowCancelledError,
     WorkflowExecutionError,
@@ -38,6 +40,10 @@ from backend.app.orchestration.models import (
     WorkflowRequest,
     WorkflowRun,
     WorkflowStage,
+)
+from backend.app.orchestration.recovery import (
+    WorkflowRecoveryManager,
+    verify_artifact_integrity,
 )
 from backend.app.orchestration.stage_registry import (
     StageRegistry,
@@ -57,6 +63,10 @@ from backend.app.orchestration.states import (
     StageType,
     WorkflowStatus,
 )
+from backend.app.orchestration.storage import (
+    InMemoryWorkflowStore,
+    WorkflowStore,
+)
 from backend.app.orchestration.transitions import (
     VALID_STAGE_TRANSITIONS,
     VALID_WORKFLOW_TRANSITIONS,
@@ -74,7 +84,9 @@ __all__ = [
     "ExecutionLimits",
     "ExecutionVerificationAdapter",
     "HumanApprovalAdapter",
+    "IdempotencyConflictError",
     "ImplementationPlanningAdapter",
+    "InMemoryWorkflowStore",
     "InvalidStageStateTransitionError",
     "InvalidWorkflowStateTransitionError",
     "IssueAnalysisAdapter",
@@ -95,6 +107,7 @@ __all__ = [
     "TERMINAL_WORKFLOW_STATES",
     "VALID_STAGE_TRANSITIONS",
     "VALID_WORKFLOW_TRANSITIONS",
+    "WorkflowArtifactIntegrityError",
     "WorkflowArtifactReferences",
     "WorkflowBlockedError",
     "WorkflowCancelledError",
@@ -104,12 +117,15 @@ __all__ = [
     "WorkflowExecutor",
     "WorkflowNotFoundError",
     "WorkflowPausedError",
+    "WorkflowRecoveryManager",
     "WorkflowRequest",
     "WorkflowRun",
     "WorkflowStage",
     "WorkflowStageAdapter",
     "WorkflowStateMachine",
     "WorkflowStatus",
+    "WorkflowStore",
     "WorkflowValidationError",
     "create_default_stage_registry",
+    "verify_artifact_integrity",
 ]
