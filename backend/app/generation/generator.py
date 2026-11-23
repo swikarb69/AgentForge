@@ -50,7 +50,7 @@ class CodeGenerator:
         permitted_files = sorted(context.target_files.keys())
 
         # Construct prompt ensuring prompt formatting functions without error
-        _ = build_generation_prompt(plan, context)
+        prompt = build_generation_prompt(plan, context)
 
         request = GenerationRequest(
             generation_id=gen_id,
@@ -71,6 +71,7 @@ class CodeGenerator:
         )
 
         context_payload = {
+            "prompt": prompt,
             "file_contents": {
                 path: fctx.original_content
                 for path, fctx in context.target_files.items()

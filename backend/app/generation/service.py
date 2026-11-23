@@ -209,6 +209,11 @@ class GenerationService:
             "target_files_count": len(changes),
             "context_bytes": context.total_bytes,
         }
+        if (
+            hasattr(generator.provider, "last_usage")
+            and generator.provider.last_usage is not None
+        ):
+            usage["tokens"] = dict(generator.provider.last_usage)
 
         result = GenerationResult(
             generation_id=generation_id,
