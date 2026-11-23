@@ -5,7 +5,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 from backend.app.api.routes import (
     approval,
@@ -21,6 +25,73 @@ from backend.app.api.routes import (
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+PUBLIC_EXEMPT_PATHS: set[str] = {
+    "/api/v1/health",
+    "/api/v1/version",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
+}
+
+
+def _is_public_path(path: str) -> bool:
+    """Return True if path is exempt from API key authentication."""
+    normalized = path.rstrip("/")
+    if normalized in PUBLIC_EXEMPT_PATHS or path in PUBLIC_EXEMPT_PATHS:
+        return True
+    if path.startswith("/docs") or path.startswith("/redoc"):
+        return True
+    return False
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Enforce production security headers on all HTTP responses."""
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "0"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        return response
+
+
+class APIKeyAuthMiddleware(BaseHTTPMiddleware):
+    """Enforce API key authentication for protected endpoints when enabled."""
+
+    async def dispatch(
+        self, request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        if not settings.API_KEY_AUTH_ENABLED or request.method == "OPTIONS":
+            return await call_next(request)
+
+        if _is_public_path(request.url.path):
+            return await call_next(request)
+
+        # Extract API key from header: X-API-Key or Authorization Bearer
+        api_key = request.headers.get("x-api-key")
+        if not api_key:
+            auth_header = request.headers.get("authorization", "")
+            if auth_header.startswith("Bearer "):
+                api_key = auth_header[7:].strip()
+
+        configured_key = (
+            settings.API_KEY.get_secret_value() if settings.API_KEY else None
+        )
+
+        if not api_key or not configured_key or api_key != configured_key:
+            return JSONResponse(
+                status_code=401,
+                content={"detail": "Invalid or missing API key"},
+            )
+
+        return await call_next(request)
 
 
 @asynccontextmanager
@@ -69,6 +140,17 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
+)
+
+# Register Middlewares (added in order: inner -> outer)
+app.add_middleware(APIKeyAuthMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials="*" not in settings.CORS_ORIGINS,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Register API routers
