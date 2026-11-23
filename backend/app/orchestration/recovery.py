@@ -53,9 +53,8 @@ def verify_artifact_integrity(run: WorkflowRun, context: WorkflowContext) -> Non
                     f"Workflow '{run.workflow_id}' completed "
                     f"'{stage_type.value}' but repository_analysis_id is missing"
                 )
-            if (
+            if artifacts.repository_analysis_hash and not _HEX_HASH_PATTERN.match(
                 artifacts.repository_analysis_hash
-                and not _HEX_HASH_PATTERN.match(artifacts.repository_analysis_hash)
             ):
                 raise WorkflowArtifactIntegrityError(
                     f"Corrupted repository_analysis_hash in '{run.workflow_id}'"
@@ -67,9 +66,8 @@ def verify_artifact_integrity(run: WorkflowRun, context: WorkflowContext) -> Non
                     f"Workflow '{run.workflow_id}' completed "
                     f"'{stage_type.value}' but issue_analysis_id is missing"
                 )
-            if (
+            if artifacts.issue_analysis_hash and not _HEX_HASH_PATTERN.match(
                 artifacts.issue_analysis_hash
-                and not _HEX_HASH_PATTERN.match(artifacts.issue_analysis_hash)
             ):
                 raise WorkflowArtifactIntegrityError(
                     f"Corrupted issue_analysis_hash in '{run.workflow_id}'"
@@ -81,9 +79,8 @@ def verify_artifact_integrity(run: WorkflowRun, context: WorkflowContext) -> Non
                     f"Workflow '{run.workflow_id}' completed "
                     f"'{stage_type.value}' but implementation_plan_id is missing"
                 )
-            if (
+            if artifacts.implementation_plan_hash and not _HEX_HASH_PATTERN.match(
                 artifacts.implementation_plan_hash
-                and not _HEX_HASH_PATTERN.match(artifacts.implementation_plan_hash)
             ):
                 raise WorkflowArtifactIntegrityError(
                     f"Corrupted implementation_plan_hash in '{run.workflow_id}'"

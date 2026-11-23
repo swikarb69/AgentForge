@@ -50,12 +50,8 @@ class WorkflowActionRequest(BaseModel):
 class WorkflowListResponse(BaseModel):
     """Paginated collection of workflow run records."""
 
-    items: list[WorkflowRun] = Field(
-        description="List of retrieved workflow runs"
-    )
-    total: int = Field(
-        description="Total number of workflow runs matching criteria"
-    )
+    items: list[WorkflowRun] = Field(description="List of retrieved workflow runs")
+    total: int = Field(description="Total number of workflow runs matching criteria")
     limit: int = Field(description="Applied pagination page limit")
     offset: int = Field(description="Applied pagination offset")
 
@@ -74,9 +70,7 @@ class WorkflowListResponse(BaseModel):
 )
 async def start_workflow(
     request: WorkflowRequest,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
 ) -> WorkflowRun:
     """Launch or idempotently retrieve an end-to-end workflow execution."""
     try:
@@ -100,20 +94,14 @@ async def start_workflow(
     description="Retrieve paginated list of workflow runs with optional status filter.",
 )
 async def list_workflows(
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-    status_filter: Annotated[
-        WorkflowStatus | None, Query(alias="status")
-    ] = None,
+    status_filter: Annotated[WorkflowStatus | None, Query(alias="status")] = None,
 ) -> WorkflowListResponse:
     """List workflow run records with pagination."""
     items = list(
-        await service.list_workflows(
-            limit=limit, offset=offset, status=status_filter
-        )
+        await service.list_workflows(limit=limit, offset=offset, status=status_filter)
     )
     total = await service.count_workflows(status=status_filter)
     return WorkflowListResponse(
@@ -132,9 +120,7 @@ async def list_workflows(
 )
 async def get_workflow(
     workflow_id: str,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
 ) -> WorkflowRun:
     """Retrieve details and stage execution states for a specific workflow."""
     run = await service.get_workflow(workflow_id)
@@ -154,9 +140,7 @@ async def get_workflow(
 )
 async def get_workflow_context(
     workflow_id: str,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
 ) -> WorkflowContext:
     """Retrieve full execution context and artifact references for a workflow."""
     ctx = await service.get_workflow_context(workflow_id)
@@ -176,9 +160,7 @@ async def get_workflow_context(
 )
 async def pause_workflow(
     workflow_id: str,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
     action: WorkflowActionRequest | None = None,
 ) -> WorkflowRun:
     """Pause execution of a running or queued workflow run."""
@@ -214,9 +196,7 @@ async def pause_workflow(
 )
 async def resume_workflow(
     workflow_id: str,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
     action: WorkflowActionRequest | None = None,
 ) -> WorkflowRun:
     """Resume execution of a paused or waiting workflow run."""
@@ -256,9 +236,7 @@ async def resume_workflow(
 )
 async def cancel_workflow(
     workflow_id: str,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
     action: WorkflowActionRequest | None = None,
 ) -> WorkflowRun:
     """Cancel execution of an active or waiting workflow run."""
@@ -294,9 +272,7 @@ async def cancel_workflow(
 )
 async def get_workflow_events(
     workflow_id: str,
-    service: Annotated[
-        OrchestrationService, Depends(get_orchestration_service)
-    ],
+    service: Annotated[OrchestrationService, Depends(get_orchestration_service)],
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
     event_type: Annotated[WorkflowEventType | None, Query()] = None,

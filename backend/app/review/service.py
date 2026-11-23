@@ -258,7 +258,30 @@ class ReviewService:
             if isinstance(meta_files, dict):
                 review_files.update(meta_files)
 
-        # Check GenerationService
+        # 1. Check explicit active patch content first (repaired patch or custom patch)
+        if not review_files and request.patch_content:
+            diff_files = extract_files_from_unified_diff(
+                request.patch_content, repo_path=repo_path
+            )
+            review_files.update(diff_files)
+
+        # 2. Check DebuggingService for repair patch
+        if not review_files and request.repair_id and self.debugging_service:
+            rep = getattr(self.debugging_service, "get_repair", lambda _: None)(
+                request.repair_id
+            )
+            if rep:
+                repair_result = repair_result or rep
+                rep_patch = getattr(rep, "final_patch", None) or getattr(
+                    rep, "winning_patch", None
+                )
+                if rep_patch:
+                    diff_files = extract_files_from_unified_diff(
+                        rep_patch, repo_path=repo_path
+                    )
+                    review_files.update(diff_files)
+
+        # 3. Fallback to GenerationService if no repair or direct patch provided
         if not review_files and request.generation_id and self.generation_service:
             gen_result = getattr(
                 self.generation_service, "get_generation", lambda _: None
@@ -266,26 +289,6 @@ class ReviewService:
             if isinstance(gen_result, GenerationResult):
                 for ch in gen_result.changes:
                     review_files[ch.path] = ch.content
-
-        # Check DebuggingService
-        if not review_files and request.repair_id and self.debugging_service:
-            rep = getattr(self.debugging_service, "get_repair", lambda _: None)(
-                request.repair_id
-            )
-            if rep:
-                repair_result = repair_result or rep
-                if hasattr(rep, "winning_patch") and rep.winning_patch:
-                    diff_files = extract_files_from_unified_diff(
-                        rep.winning_patch, repo_path=repo_path
-                    )
-                    review_files.update(diff_files)
-
-        # Check patch_content
-        if not review_files and request.patch_content:
-            diff_files = extract_files_from_unified_diff(
-                request.patch_content, repo_path=repo_path
-            )
-            review_files.update(diff_files)
 
         # If full repository scope or no patch files found, read repository
         if not review_files or request.review_scope == ReviewScope.FULL_REPOSITORY:

@@ -28,9 +28,7 @@ class WorkflowStore(ABC):
         """Persist or update workflow run and context with optimistic locking."""
 
     @abstractmethod
-    async def get(
-        self, workflow_id: str
-    ) -> tuple[WorkflowRun, WorkflowContext] | None:
+    async def get(self, workflow_id: str) -> tuple[WorkflowRun, WorkflowContext] | None:
         """Retrieve workflow run and associated context by workflow identifier."""
 
     @abstractmethod
@@ -42,9 +40,7 @@ class WorkflowStore(ABC):
         """Retrieve only the workflow context record by identifier."""
 
     @abstractmethod
-    async def get_by_idempotency_key(
-        self, idempotency_key: str
-    ) -> WorkflowRun | None:
+    async def get_by_idempotency_key(self, idempotency_key: str) -> WorkflowRun | None:
         """Retrieve workflow run associated with an idempotency key."""
 
     @abstractmethod
@@ -135,9 +131,7 @@ class InMemoryWorkflowStore(WorkflowStore):
             self._runs[run.workflow_id] = run.model_copy(deep=True)
             self._contexts[run.workflow_id] = context.model_copy(deep=True)
 
-    async def get(
-        self, workflow_id: str
-    ) -> tuple[WorkflowRun, WorkflowContext] | None:
+    async def get(self, workflow_id: str) -> tuple[WorkflowRun, WorkflowContext] | None:
         """Retrieve deep-copied workflow run and context by workflow identifier."""
         async with self._master_lock:
             run = self._runs.get(workflow_id)
@@ -158,9 +152,7 @@ class InMemoryWorkflowStore(WorkflowStore):
             context = self._contexts.get(workflow_id)
             return context.model_copy(deep=True) if context else None
 
-    async def get_by_idempotency_key(
-        self, idempotency_key: str
-    ) -> WorkflowRun | None:
+    async def get_by_idempotency_key(self, idempotency_key: str) -> WorkflowRun | None:
         """Retrieve workflow run associated with idempotency key."""
         async with self._master_lock:
             wf_id = self._idempotency_index.get(idempotency_key)

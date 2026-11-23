@@ -3,6 +3,7 @@
 import hashlib
 import inspect
 import logging
+from pathlib import Path
 from typing import Any
 
 from backend.app.approval.identity import UserIdentity
@@ -12,6 +13,7 @@ from backend.app.approval.models import (
     ArtifactBinding,
 )
 from backend.app.approval.service import ApprovalService
+from backend.app.core.config import settings
 from backend.app.debugging.models import (
     RepairConfiguration,
     RepairRequest,
@@ -30,6 +32,7 @@ from backend.app.generation.models import (
 )
 from backend.app.generation.service import GenerationService
 from backend.app.issue.service import IssueContextBuilder
+from backend.app.orchestration.context import WorkflowContext
 from backend.app.orchestration.stages import (
     StageInput,
     StageOutput,
@@ -50,6 +53,67 @@ def _compute_sha256(data: str | bytes) -> str:
     if isinstance(data, str):
         data = data.encode("utf-8")
     return hashlib.sha256(data).hexdigest()
+
+
+def _resolve_active_patch(context: WorkflowContext) -> str:
+    """Resolve current active patch content across memory and storage fallbacks.
+
+    Prioritizes:
+    1. context.shared_data["active_patch"]
+    2. Repaired patch from repair artifact file or repair_result in shared_data
+    3. Generated patch from generation artifact file or generation_result in shared_data
+    """
+    # 1. Ephemeral shared data
+    active = context.shared_data.get("active_patch")
+    if active and isinstance(active, str) and active.strip():
+        return str(active)
+
+    # 2. Repair artifacts / result
+    repair_id = context.artifacts.repair_id
+    if repair_id:
+        repair_res = context.shared_data.get("repair_result")
+        if repair_res and getattr(repair_res, "final_patch", None):
+            return str(repair_res.final_patch)
+
+        # Check disk artifacts for repair
+        for candidate_path in [
+            Path(f"agentforge-artifacts/repair/{repair_id}.patch"),
+            Path(f"agentforge-artifacts/repair/{repair_id}.diff"),
+        ]:
+            if candidate_path.exists():
+                try:
+                    return candidate_path.read_text(encoding="utf-8")
+                except Exception as exc:
+                    logger.warning(
+                        "Could not read repair patch artifact %s: %s",
+                        candidate_path,
+                        exc,
+                    )
+
+    # 3. Generation artifacts / result
+    gen_id = context.artifacts.generation_id
+    if gen_id:
+        gen_res = context.shared_data.get("generation_result")
+        if gen_res and getattr(gen_res, "patch_content", None):
+            return str(gen_res.patch_content)
+
+        # Check disk artifacts for generation
+        for candidate_path in [
+            Path(f"agentforge-artifacts/generation/{gen_id}.patch"),
+            Path(f"agentforge-artifacts/generation/{gen_id}.diff"),
+            Path(settings.GENERATION_ARTIFACT_DIR) / f"{gen_id}.patch",
+        ]:
+            if candidate_path.exists():
+                try:
+                    return candidate_path.read_text(encoding="utf-8")
+                except Exception as exc:
+                    logger.warning(
+                        "Could not read generation patch artifact %s: %s",
+                        candidate_path,
+                        exc,
+                    )
+
+    return ""
 
 
 async def _resolve_actor(
@@ -76,7 +140,7 @@ async def _resolve_actor(
             actor_id=actor_id,
             username=actor_id,
             display_name=display_name,
-            roles=[default_role],
+            roles=[default_role, ApprovalRole.ADMIN],
         )
     return actor
 
@@ -319,7 +383,7 @@ class ExecutionVerificationAdapter(WorkflowStageAdapter):
     async def execute(self, stage_input: StageInput) -> StageOutput:
         """Apply patch in ephemeral sandbox and execute test verification."""
         try:
-            active_patch = stage_input.context.shared_data.get("active_patch", "")
+            active_patch = _resolve_active_patch(stage_input.context)
             exec_req = CreateExecutionRequest(
                 repository_path=str(stage_input.repository_path),
                 patch_content=active_patch,
@@ -448,6 +512,26 @@ class AutomaticRepairAdapter(WorkflowStageAdapter):
                 patch_hash = _compute_sha256(repair_res.final_patch)
                 stage_input.context.artifacts.repair_patch_hash = patch_hash
                 stage_input.context.shared_data["active_patch"] = repair_res.final_patch
+                try:
+                    rep_dir = Path("agentforge-artifacts/repair")
+                    rep_dir.mkdir(parents=True, exist_ok=True)
+                    (rep_dir / f"{repair_res.repair_id}.patch").write_text(
+                        repair_res.final_patch, encoding="utf-8"
+                    )
+                except Exception as exc:
+                    logger.warning("Failed saving repair patch artifact: %s", exc)
+
+            if repair_res.attempts:
+                last_exec = repair_res.attempts[-1].execution_report
+                if last_exec and last_exec.verification_passed:
+                    stage_input.context.shared_data["verification_report"] = last_exec
+                    stage_input.context.artifacts.execution_id = last_exec.execution_id
+                    stage_input.context.artifacts.execution_verification_hash = (
+                        _compute_sha256(
+                            f"{last_exec.execution_id}:{last_exec.verification_passed}:"
+                            f"{last_exec.patch_applied}"
+                        )
+                    )
 
             summary = {
                 "repair_id": repair_res.repair_id,
@@ -501,7 +585,7 @@ class CodeReviewAdapter(WorkflowStageAdapter):
                 repair_id=stage_input.context.artifacts.repair_id,
                 plan_id=stage_input.context.artifacts.implementation_plan_id,
                 issue_id=stage_input.context.artifacts.issue_analysis_id,
-                patch_content=stage_input.context.shared_data.get("active_patch"),
+                patch_content=_resolve_active_patch(stage_input.context) or None,
             )
 
             review_report = await self.service.create_review(
@@ -683,7 +767,28 @@ class ControlledReleaseAdapter(WorkflowStageAdapter):
                 )
 
             # 1. Evaluate release readiness
-            readiness = self.service.evaluate_readiness(approval_id)
+            active_patch = _resolve_active_patch(stage_input.context)
+            repo_path_to_check = (
+                stage_input.repository_path
+                if stage_input.repository_path
+                and Path(stage_input.repository_path).is_dir()
+                else None
+            )
+            readiness = self.service.evaluate_readiness(
+                approval_id,
+                repository_path=repo_path_to_check,
+                plan=stage_input.context.shared_data.get("implementation_plan"),
+                generation_result=stage_input.context.shared_data.get(
+                    "generation_result"
+                ),
+                verification_report=stage_input.context.shared_data.get(
+                    "verification_report"
+                ),
+                review_report=stage_input.context.shared_data.get("review_report"),
+                repair_session=stage_input.context.shared_data.get("repair_result"),
+                current_patch_hash=stage_input.context.get_effective_patch_hash(),
+                current_review_hash=stage_input.context.artifacts.review_hash,
+            )
             if not readiness.is_release_ready:
                 return StageOutput(
                     stage_type=StageType.CONTROLLED_RELEASE,
@@ -694,8 +799,6 @@ class ControlledReleaseAdapter(WorkflowStageAdapter):
                 )
 
             # 2. Execute release operation (Zero auto-merge: creates branch and PR)
-            active_patch = stage_input.context.shared_data.get("active_patch", "")
-
             actor = await _resolve_actor(
                 getattr(self.service, "identity_provider", None),
                 actor_id="release_operator",

@@ -32,9 +32,7 @@ class WorkflowEventBus:
     def unsubscribe(self, handler: EventHandler) -> bool:
         """Remove a previously registered handler callback."""
         initial_len = len(self._subscribers)
-        self._subscribers = [
-            (h, t) for (h, t) in self._subscribers if h != handler
-        ]
+        self._subscribers = [(h, t) for (h, t) in self._subscribers if h != handler]
         return len(self._subscribers) < initial_len
 
     async def publish(self, event: WorkflowEvent) -> None:

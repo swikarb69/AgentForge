@@ -55,9 +55,7 @@ class OrchestrationService:
     async def start_workflow(self, request: WorkflowRequest) -> WorkflowRun:
         """Initiate or resume an autonomous engineering workflow run."""
         if request.idempotency_key:
-            existing = await self.store.get_by_idempotency_key(
-                request.idempotency_key
-            )
+            existing = await self.store.get_by_idempotency_key(request.idempotency_key)
             if existing is not None:
                 if existing.workflow_id != request.workflow_id:
                     raise IdempotencyConflictError(
@@ -112,9 +110,7 @@ class OrchestrationService:
         """Retrieve workflow run metadata by identifier."""
         return await self.store.get_run(workflow_id)
 
-    async def get_workflow_context(
-        self, workflow_id: str
-    ) -> WorkflowContext | None:
+    async def get_workflow_context(self, workflow_id: str) -> WorkflowContext | None:
         """Retrieve workflow context and artifact links by identifier."""
         return await self.store.get_context(workflow_id)
 

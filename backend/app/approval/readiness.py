@@ -230,17 +230,29 @@ class ReleaseReadinessEngine:
             v_passed = getattr(verification_report, "verification_passed", True)
             f_list = getattr(verification_report, "failures", []) or []
             if not v_passed or f_list:
-                exec_ok = False
-                msg = "Execution verification failed: " + (
-                    "; ".join(f_list) if f_list else "tests did not pass"
-                )
-                checks.append(
-                    ReadinessCheck(
-                        check_name="execution_verification", passed=False, details=msg
+                resolved_by_repair = False
+                if repair_session is not None:
+                    r_state = str(
+                        getattr(repair_session, "current_state", "")
+                        or getattr(repair_session, "status", "")
+                    ).lower()
+                    if "succeeded" in r_state or "fixed" in r_state:
+                        resolved_by_repair = True
+
+                if not resolved_by_repair:
+                    exec_ok = False
+                    msg = "Execution verification failed: " + (
+                        "; ".join(f_list) if f_list else "tests did not pass"
                     )
-                )
-                failed_names.append("execution_verification")
-                blockers.append(msg)
+                    checks.append(
+                        ReadinessCheck(
+                            check_name="execution_verification",
+                            passed=False,
+                            details=msg,
+                        )
+                    )
+                    failed_names.append("execution_verification")
+                    blockers.append(msg)
         if exec_ok:
             checks.append(
                 ReadinessCheck(

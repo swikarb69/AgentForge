@@ -319,14 +319,10 @@ async def test_recovery_manager_pause_and_cancel() -> None:
     cancelled_run = await manager.cancel("wf-lifecycle", reason="Cancelled by user")
     assert cancelled_run.status == WorkflowStatus.CANCELLED
     assert cancelled_run.cancellation_reason == "Cancelled by user"
-    assert (
-        cancelled_run.stages["repository_analysis"].status == StageStatus.CANCELLED
-    )
+    assert cancelled_run.stages["repository_analysis"].status == StageStatus.CANCELLED
 
     # Cannot pause or cancel a terminal workflow
-    with pytest.raises(
-        InvalidWorkflowStateTransitionError, match="terminal state"
-    ):
+    with pytest.raises(InvalidWorkflowStateTransitionError, match="terminal state"):
         await manager.pause("wf-lifecycle")
 
 
@@ -474,9 +470,7 @@ async def test_recovery_manager_resume_integrity_failure(tmp_path: Path) -> None
     await store.save(run, ctx)
 
     manager = WorkflowRecoveryManager(store=store)
-    with pytest.raises(
-        WorkflowArtifactIntegrityError, match="Artifact hash mismatch"
-    ):
+    with pytest.raises(WorkflowArtifactIntegrityError, match="Artifact hash mismatch"):
         await manager.resume("wf-tampered")
 
 

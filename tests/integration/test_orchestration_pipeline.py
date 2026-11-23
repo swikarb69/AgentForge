@@ -192,9 +192,7 @@ def _build_test_registry(pause_at_approval: bool = False) -> StageRegistry:
             prerequisites=[StageType.CODE_REVIEW],
             timeout_seconds=10,
         ),
-        MockStageAdapter(
-            StageType.HUMAN_APPROVAL, should_pause=pause_at_approval
-        ),
+        MockStageAdapter(StageType.HUMAN_APPROVAL, should_pause=pause_at_approval),
     )
     reg.register(
         StageDefinition(
@@ -210,9 +208,9 @@ def _build_test_registry(pause_at_approval: bool = False) -> StageRegistry:
 
 
 @pytest.fixture
-def override_orchestration_service() -> (
-    Generator[tuple[OrchestrationService, StageRegistry]]
-):
+def override_orchestration_service() -> Generator[
+    tuple[OrchestrationService, StageRegistry]
+]:
     """Fixture providing an isolated OrchestrationService wired to FastAPI."""
     store = InMemoryWorkflowStore()
     event_bus = WorkflowEventBus()
@@ -282,8 +280,9 @@ def test_rest_api_workflow_lifecycle(
     ctx_data = ctx_resp.json()
     assert ctx_data["workflow_id"] == "wf-api-e2e-1"
     assert ctx_data["artifacts"]["release_pr_number"] == 42
-    assert "https://github.com/swikarb69/AgentForge/pull/42" in (
-        ctx_data["artifacts"]["release_pr_url"]
+    assert (
+        "https://github.com/swikarb69/AgentForge/pull/42"
+        in (ctx_data["artifacts"]["release_pr_url"])
     )
 
     # 5. GET /api/v1/workflows/{workflow_id}/events
@@ -296,9 +295,7 @@ def test_rest_api_workflow_lifecycle(
     assert WorkflowEventType.WORKFLOW_COMPLETED.value in types
 
     # 6. GET /api/v1/workflows (List)
-    list_resp = client.get(
-        "/api/v1/workflows", params={"limit": 10, "offset": 0}
-    )
+    list_resp = client.get("/api/v1/workflows", params={"limit": 10, "offset": 0})
     assert list_resp.status_code == 200
     list_data = list_resp.json()
     assert list_data["total"] >= 1
@@ -306,10 +303,7 @@ def test_rest_api_workflow_lifecycle(
 
     # 7. 404 Not Found tests
     assert client.get("/api/v1/workflows/wf-missing-999").status_code == 404
-    assert (
-        client.get("/api/v1/workflows/wf-missing-999/context").status_code
-        == 404
-    )
+    assert client.get("/api/v1/workflows/wf-missing-999/context").status_code == 404
 
 
 def test_rest_api_pause_resume_cancel(
@@ -517,4 +511,3 @@ def test_rest_api_error_handling(
         },
     )
     assert conflict_resp.status_code == 409
-
