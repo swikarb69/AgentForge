@@ -21,4 +21,4 @@ def test_version_endpoint() -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "AgentForge"
-    assert data["version"] == "0.1.0"
+    assert data["version"] == "0.11.0"

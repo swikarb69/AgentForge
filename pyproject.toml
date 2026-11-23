@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentforge"
-version = "0.1.0"
+version = "0.11.0"
 description = "Autonomous AI Software Engineer — GitHub Issue to Tested Pull Request"
 authors = [
     { name = "Swikar Bhattarai" }

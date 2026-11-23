@@ -1,11 +1,13 @@
 """Application configuration management using Pydantic Settings."""
 
-from pydantic import SecretStr
+from typing import Any
+
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """AgentForge application settings."""
+    """AgentForge application settings and environment configuration."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -16,16 +18,34 @@ class Settings(BaseSettings):
 
     # Application Configuration
     APP_NAME: str = "AgentForge"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "0.11.0"
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
+    API_V1_STR: str = "/api/v1"
+    SECRET_KEY: SecretStr | None = None
 
-    # AI & GitHub API Tokens (Optional in Sprint 0/1/2)
-    GITHUB_TOKEN: SecretStr | None = None
+    # AI Provider Configuration
+    AI_PROVIDER: str = "mock"
     OPENAI_API_KEY: SecretStr | None = None
+    OPENAI_MODEL: str = "gpt-4o"
     GEMINI_API_KEY: SecretStr | None = None
+    GEMINI_MODEL: str = "gemini-1.5-pro"
+    AI_TIMEOUT_SECONDS: int = 60
+    AI_MAX_RETRIES: int = 3
+    AI_TEMPERATURE: float = 0.2
 
-    # Sandbox & Execution Configuration
+    # GitHub Integration Configuration
+    GITHUB_TOKEN: SecretStr | None = None
+    GITHUB_API_URL: str = "https://api.github.com"
+    GITHUB_OWNER: str = "swikarb69"
+    GITHUB_REPO: str = "AgentForge"
+
+    # Storage & Persistence Configuration
+    DATABASE_URL: str = "sqlite:///./agentforge.db"
+    STORAGE_BACKEND: str = "memory"
+    STORAGE_DIR: str = "agentforge-storage"
+
+    # Sandbox & Isolated Execution Configuration
     SANDBOX_TIMEOUT: int = 30
     SANDBOX_MEMORY_LIMIT: str = "512m"
     SANDBOX_CPU_LIMIT: int = 1
@@ -81,6 +101,72 @@ class Settings(BaseSettings):
     DEBUGGING_MAX_EVIDENCE_BYTES: int = 100_000
     DEBUGGING_MAX_TRACEBACK_LINES: int = 50
     DEBUGGING_REQUIRE_APPROVAL_FOR_HIGH_RISK: bool = True
+
+    # Security & Production Safety Controls
+    AUTO_MERGE_ALLOWED: bool = Field(
+        default=False,
+        description="Zero auto-merge policy flag; MUST remain false",
+    )
+    HOST_EXECUTION_FALLBACK_ALLOWED: bool = Field(
+        default=False,
+        description="Host execution fallback forbidden; MUST remain false",
+    )
+    CORS_ORIGINS: list[str] = ["*"]
+    API_KEY_AUTH_ENABLED: bool = False
+    API_KEY: SecretStr | None = None
+
+    @property
+    def is_production(self) -> bool:
+        """True if running in production mode."""
+        return self.ENVIRONMENT.lower() in ("production", "prod")
+
+    def validate_configuration(self) -> list[str]:
+        """Validate safety constraints and configuration consistency."""
+        errors: list[str] = []
+
+        # 1. Non-negotiable safety guardrails
+        if self.AUTO_MERGE_ALLOWED:
+            errors.append(
+                "AUTO_MERGE_ALLOWED must never be enabled (Zero Auto-Merge "
+                "boundary violated)."
+            )
+        if self.HOST_EXECUTION_FALLBACK_ALLOWED:
+            errors.append(
+                "HOST_EXECUTION_FALLBACK_ALLOWED must never be enabled (Host "
+                "execution fallback prohibited)."
+            )
+
+        # 2. Production requirements
+        if self.is_production:
+            if self.API_KEY_AUTH_ENABLED and not self.API_KEY:
+                errors.append(
+                    "API_KEY must be provided when API_KEY_AUTH_ENABLED is True "
+                    "in production."
+                )
+            if self.AI_PROVIDER == "gemini" and not self.GEMINI_API_KEY:
+                errors.append(
+                    "GEMINI_API_KEY must be configured when AI_PROVIDER is 'gemini'."
+                )
+            if self.AI_PROVIDER == "openai" and not self.OPENAI_API_KEY:
+                errors.append(
+                    "OPENAI_API_KEY must be configured when AI_PROVIDER is 'openai'."
+                )
+
+        return errors
+
+    def get_redacted_summary(self) -> dict[str, Any]:
+        """Return configuration summary with all sensitive credentials redacted."""
+        summary: dict[str, Any] = {}
+        for field_name, field_val in self:
+            if isinstance(field_val, SecretStr):
+                summary[field_name] = (
+                    "[CONFIGURED]" if field_val.get_secret_value() else None
+                )
+            elif field_val is None:
+                summary[field_name] = None
+            else:
+                summary[field_name] = field_val
+        return summary
 
 
 settings = Settings()
