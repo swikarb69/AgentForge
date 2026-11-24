@@ -107,24 +107,7 @@ jobs:
       - name: Publish Pytest Failure Summary
         if: always()
         run: |
-          if [ -f pytest_output.txt ]; then
-            python -c "
-import sys
-try:
-    with open('pytest_output.txt', 'r', errors='replace') as f:
-        content = f.read()
-    lines = content.splitlines()
-    for l in lines:
-        if l.startswith('FAILED ') or l.startswith('ERROR '):
-            print(f'::error title=Pytest Failure::{l}')
-    if '=== FAILURES ===' in content or '=== ERRORS ===' in content:
-        for l in lines[-100:]:
-            if l.strip():
-                print(f'::warning title=Pytest Trace::{l}')
-except Exception as e:
-    print(f'::warning::Failed to parse pytest output: {e}')
-"
-          fi
+          python .github/scripts/publish_test_summary.py
 
       - name: Upload Test Report
         if: always()
