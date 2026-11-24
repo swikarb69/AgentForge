@@ -143,7 +143,12 @@ jobs:
       - name: Verify Live Docker Runtime Isolation
         run: |
           set -eo pipefail
-          pytest tests/integration/test_docker_runtime_isolation.py -v -s
+          pytest tests/integration/test_docker_runtime_isolation.py -v -s 2>&1 | tee pytest_output.txt
+
+      - name: Publish Runtime Isolation Failure Summary
+        if: always()
+        run: |
+          python .github/scripts/publish_test_summary.py
 
   container-build:
     name: Container Build Verification

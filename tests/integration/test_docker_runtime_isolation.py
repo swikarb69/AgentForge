@@ -136,20 +136,17 @@ def test_runtime_host_files_inaccessible(sandbox_workspace: Path) -> None:
         image="agentforge-sandbox:latest",
         workspace_root=sandbox_workspace.parent,
     )
-    # Attempt to write to root filesystem (must fail because ReadonlyRootfs is True)
-    cmd = [
-        "python3",
-        "-c",
-        (
-            "import sys\n"
-            "try:\n"
-            "    with open('/etc/agentforge_pwn.txt', 'w') as f:\n"
-            "        f.write('pwned')\n"
-            "    print('WRITE_SUCCEEDED')\n"
-            "except OSError as e:\n"
-            "    print(f'READONLY_ENFORCED: {e}')\n"
-        ),
-    ]
+    script_file = sandbox_workspace / "check_readonly.py"
+    script_file.write_text(
+        "try:\n"
+        "    with open('/etc/agentforge_pwn.txt', 'w') as f:\n"
+        "        f.write('pwned')\n"
+        "    print('WRITE_SUCCEEDED')\n"
+        "except OSError as e:\n"
+        "    print(f'READONLY_ENFORCED: {e}')\n",
+        encoding="utf-8",
+    )
+    cmd = ["python3", "check_readonly.py"]
     policy = ExecutionPolicy(timeout_seconds=10)
     result = runner.execute(
         workspace_path=sandbox_workspace,
@@ -173,15 +170,14 @@ def test_runtime_docker_socket_inaccessible(sandbox_workspace: Path) -> None:
         image="agentforge-sandbox:latest",
         workspace_root=sandbox_workspace.parent,
     )
-    cmd = [
-        "python3",
-        "-c",
-        (
-            "import os\n"
-            "exists = os.path.exists('/var/run/docker.sock')\n"
-            "print(f'DOCKER_SOCKET_EXISTS: {exists}')\n"
-        ),
-    ]
+    script_file = sandbox_workspace / "check_socket.py"
+    script_file.write_text(
+        "import os\n"
+        "exists = os.path.exists('/var/run/docker.sock')\n"
+        "print(f'DOCKER_SOCKET_EXISTS: {exists}')\n",
+        encoding="utf-8",
+    )
+    cmd = ["python3", "check_socket.py"]
     policy = ExecutionPolicy(timeout_seconds=10)
     result = runner.execute(
         workspace_path=sandbox_workspace,
@@ -214,17 +210,15 @@ def test_runtime_concurrent_workspaces_isolated(tmp_path: Path) -> None:
         image="agentforge-sandbox:latest",
         workspace_root=root_ws,
     )
-    # Inside ws1 container, attempt to traverse to sibling workspace ws2
-    cmd = [
-        "python3",
-        "-c",
-        (
-            "import os\n"
-            "found = os.path.exists('../ws_beta/secret_beta.key') "
-            "or os.path.exists('/sandbox/workspace/../ws_beta')\n"
-            "print(f'SIBLING_ACCESSIBLE: {found}')\n"
-        ),
-    ]
+    script_file = ws1 / "check_sibling.py"
+    script_file.write_text(
+        "import os\n"
+        "found = os.path.exists('../ws_beta/secret_beta.key') "
+        "or os.path.exists('/sandbox/workspace/../ws_beta')\n"
+        "print(f'SIBLING_ACCESSIBLE: {found}')\n",
+        encoding="utf-8",
+    )
+    cmd = ["python3", "check_sibling.py"]
     policy = ExecutionPolicy(timeout_seconds=10)
     result = runner.execute(
         workspace_path=ws1,
@@ -248,7 +242,9 @@ def test_runtime_resource_limits_and_timeout(sandbox_workspace: Path) -> None:
         workspace_root=sandbox_workspace.parent,
     )
     # Sleep longer than the 2-second timeout
-    cmd = ["python3", "-c", "import time; time.sleep(15)"]
+    script_file = sandbox_workspace / "sleep_forever.py"
+    script_file.write_text("import time\ntime.sleep(15)\n", encoding="utf-8")
+    cmd = ["python3", "sleep_forever.py"]
     policy = ExecutionPolicy(timeout_seconds=2)
 
     start = time.monotonic()
