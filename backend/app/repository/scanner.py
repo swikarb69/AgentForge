@@ -40,6 +40,10 @@ class RepositoryScanner:
         for current_root, dir_names, file_names in os.walk(
             root_path, topdown=True, followlinks=False
         ):
+            # Deterministic alphabetical ordering across all filesystems and platforms
+            dir_names.sort()
+            file_names.sort()
+
             # Prune ignored directories in-place
             dir_names[:] = [
                 d

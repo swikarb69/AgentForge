@@ -63,8 +63,11 @@ class RepositoryIndex:
             content_lower = chunk.content.lower()
 
             for kw in keywords:
-                if chunk.symbol_name and kw in symbol_lower:
-                    score += 3.0
+                if chunk.symbol_name:
+                    if kw == symbol_lower:
+                        score += 5.0
+                    elif kw in symbol_lower:
+                        score += 3.0
                     if "symbol_name" not in matched_fields:
                         matched_fields.append("symbol_name")
 
@@ -89,8 +92,17 @@ class RepositoryIndex:
                     )
                 )
 
-        # Sort descending by score
-        results.sort(key=lambda r: r.score, reverse=True)
+        # Sort descending by score, prioritizing exact symbol matches
+        # and source code over tests
+        clean_query = query.strip().lower()
+        results.sort(
+            key=lambda r: (
+                r.score,
+                1 if (r.chunk.symbol_name or "").lower() == clean_query else 0,
+                0 if r.chunk.file_path.startswith("tests/") else 1,
+            ),
+            reverse=True,
+        )
         return results[:limit]
 
     def clear(self) -> None:
