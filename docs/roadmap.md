@@ -37,10 +37,13 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 [Sprint 9] End-to-End Agent Orchestration Engine (COMPLETED)
     │
     ▼
-[Sprint 10] Benchmark Evaluation Suite & Token/Cost Analytics
+[Sprint 10] Production Readiness, System Hardening & Final Integration (COMPLETED - v0.11.0)
     │
     ▼
-[Sprint 11] Developer UI Dashboard & Final Polish
+[Sprint 11] Benchmark Evaluation Suite & Token/Cost Analytics
+    │
+    ▼
+[Sprint 12] Developer UI Dashboard & v1.0.0 Final Release
 ```
 
 ---
@@ -87,10 +90,14 @@ This roadmap details the planned engineering sprints and milestones for **AgentF
 - **Status**: **COMPLETED**
 - **Deliverables**: End-to-end workflow domain models (`WorkflowRun`, `WorkflowStage`, `WorkflowRequest`, `WorkflowConfiguration`, `ExecutionLimits`), deterministic state machines for workflows (`WorkflowStateMachine`) and individual stages (`StageStateMachine`), validated context and cryptographic artifact reference tracking (`WorkflowContext`, `WorkflowArtifactReferences`), topological stage registry (`StageRegistry`) and adapters for Sprints 1–8, central sequential DAG execution engine (`WorkflowExecutor`) with bounded retries, backoff, stage and workflow timeouts, and conditional skipping, persistence and storage abstraction (`WorkflowStore`, `InMemoryWorkflowStore`) with optimistic locking, idempotency tracking, and exclusive locks, recovery manager (`WorkflowRecoveryManager`) supporting pause, resume, cancel, crash recovery, and SHA-256 artifact integrity verification, asynchronous event bus (`WorkflowEventBus`) with 16 event types and recursive secret redaction, unified orchestration service facade (`OrchestrationService`), FastAPI REST API endpoints (`/api/v1/workflows`), comprehensive unit and integration test suites, and technical documentation (`docs/end-to-end-orchestration.md`).
 
-### Sprint 10 — Benchmark Evaluation Suite & Token/Cost Analytics
+### Sprint 10 — Production Readiness, System Hardening & Final Integration
+- **Status**: **COMPLETED (v0.11.0)**
+- **Deliverables**: Comprehensive repository audit and cross-module hardening (`docs/sprint-10-audit.md`), production configuration and secret sanitization (`backend/app/core/config.py`, startup lifespan checks), live AI provider integration with header auth (`x-goog-api-key`, `Authorization: Bearer`), bounded retries, robust JSON parsing, and token usage tracking (`backend/app/generation/provider.py`), durable storage engines (`SqliteWorkflowStore`, `FileWorkflowStore`, `create_workflow_store`) with ACID locks and crash recovery, container and API security hardening (multi-stage non-root Dockerfile, `.dockerignore`, security response headers, CORS, API key auth), production observability and telemetry (`/api/v1/ready`, `/api/v1/metrics`, `X-Correlation-ID`), production deployment configuration (`docker-compose.yml`, hardened CI pipeline with `pip-audit`), complete 10-scenario E2E acceptance test suite (`tests/e2e/test_agentforge_e2e.py`), and full production readiness documentation (`docs/production-readiness-report.md`).
+
+### Sprint 11 — Benchmark Evaluation Suite & Token/Cost Analytics
 - **Status**: PLANNED
 - **Deliverables**: Benchmark task suite, latency metric tracker, token counter, financial cost estimation engine.
 
-### Sprint 11 — Developer UI Dashboard & Final Polish
+### Sprint 12 — Developer UI Dashboard & v1.0.0 Final Release
 - **Status**: PLANNED
 - **Deliverables**: Developer UI dashboard, real-time agent state timeline, live logs view, end-to-end user testing, v1.0.0 release.

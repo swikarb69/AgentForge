@@ -5,6 +5,18 @@ All notable changes to AgentForge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-11-24
+
+### Added - Sprint 10: Production Readiness, System Hardening & Final Integration
+- **Configuration & Secret Hygiene**: Centralized Pydantic `Settings` with startup lifespan validation, zero auto-merge enforcement, host execution fallback prohibition, and `Settings.get_redacted_summary()` masking secrets as `[CONFIGURED]` (`backend/app/core/config.py`).
+- **Live AI Provider Hardening**: Header-based authentication (`x-goog-api-key`, `Authorization: Bearer`), completely eliminating API keys from query strings and proxy logs; bounded exponential backoff retries (3 attempts, max delay 8s) for HTTP 429 and transient 5xx errors; robust multi-format JSON parser with markdown fence extraction fallbacks; and token usage tracking (`prompt_tokens`, `completion_tokens`, `total_tokens`) (`backend/app/generation/provider.py`).
+- **Durable Storage & Crash Recovery**: Relational SQLite workflow storage (`SqliteWorkflowStore`) with WAL mode, optimistic locking on `version`, and cross-process distributed locks; atomic file-backed storage (`FileWorkflowStore`) utilizing atomic rename; unified `create_workflow_store()` factory; and tested crash recovery (`WorkflowRecoveryManager`) (`backend/app/orchestration/storage.py`, `backend/app/orchestration/recovery.py`).
+- **Container & API Security Hardening**: Multi-stage production Docker build omitting compilers in the runtime stage, dedicated unprivileged non-root user `agentforge` (UID 10001), container healthcheck probe, `.dockerignore` shielding sensitive assets, HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`, `Content-Security-Policy`), configurable CORS middleware, and API key authentication (`X-API-Key` / `Bearer`) with public exemptions (`backend/app/main.py`, `Dockerfile`, `.dockerignore`, `docs/security.md`).
+- **Observability & Request Tracing**: Deep readiness probe (`/api/v1/ready`) checking storage and sandbox availability; live operational metrics (`/api/v1/metrics`) reporting workflow counts, failure rates, uptime, and runtime info; and request correlation ID tracing middleware (`X-Correlation-ID`) propagating tracing IDs across all responses (`backend/app/core/telemetry.py`, `backend/app/main.py`).
+- **CI/CD & Deployment Hardening**: Production `docker-compose.yml` with health checks, cgroup resource limits, and persistent volume mounts; and hardened GitHub Actions CI pipeline with dependency vulnerability auditing (`pip-audit`) and container build validation (`.github/workflows/ci.yml`, `docker-compose.yml`, `pyproject.toml`).
+- **End-to-End Acceptance Test Suite**: Comprehensive 10-scenario acceptance test suite (`tests/e2e/test_agentforge_e2e.py`) validating happy path (Scenario A), repair loop (Scenario B), blocking review defects (Scenario C), human rejection (Scenario D), timeout retry (Scenario E), idempotency (Scenario F), pause/resume (Scenario G), durable crash recovery (Scenario H), non-bypassable approval boundary (Scenario I), and zero auto-merge enforcement (Scenario J).
+- **Production Readiness Documentation**: Full architecture, security matrix, reliability, and verification audit report (`docs/production-readiness-report.md`).
+
 ## [0.10.0] - 2026-11-23
 
 ### Added - Sprint 9: End-to-End Agent Orchestration Engine
