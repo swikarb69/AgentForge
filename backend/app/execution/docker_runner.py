@@ -14,6 +14,11 @@ from typing import Any
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
+from backend.app.execution.exceptions import (
+    ContainerSecurityError,
+    WorkspaceSecurityError,
+)
+from backend.app.execution.gatekeeper import SandboxContainerPayloadValidator
 from backend.app.execution.models import (
     ExecutionPolicy,
     ExecutionResult,
@@ -107,6 +112,12 @@ class CLIDockerClient(DockerClientInterface):
         environment: dict[str, str] | None,
     ) -> list[str]:
         """Construct isolated, restricted docker run command arguments."""
+        named_volume = getattr(settings, "DOCKER_NAMED_VOLUME", None)
+        if named_volume:
+            mount_spec = f"{named_volume}:/sandbox/workspace:rw"
+        else:
+            mount_spec = f"{workspace_path.resolve()}:/sandbox/workspace:rw"
+
         args: list[str] = [self.docker_binary or "docker"]
         if self.docker_host:
             args.extend(["-H", self.docker_host])
@@ -118,6 +129,8 @@ class CLIDockerClient(DockerClientInterface):
                 "10001:10001",
                 "--cap-drop",
                 "ALL",
+                "--security-opt",
+                "no-new-privileges:true",
                 "--read-only",
                 "--tmpfs",
                 "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108  # nosec B108
@@ -128,7 +141,7 @@ class CLIDockerClient(DockerClientInterface):
                 "--network",
                 "none" if not policy.network_enabled else "bridge",
                 "-v",
-                f"{workspace_path.resolve()}:/sandbox/workspace:rw",
+                mount_spec,
                 "-w",
                 "/sandbox/workspace",
             ]
@@ -139,6 +152,13 @@ class CLIDockerClient(DockerClientInterface):
 
         args.append(image)
         args.extend(command)
+
+        if getattr(settings, "DOCKER_CONTAINER_GATEKEEPER_ENFORCED", True):
+            SandboxContainerPayloadValidator.validate_docker_cli_args(
+                args,
+                allowed_images=getattr(settings, "SANDBOX_ALLOWED_IMAGES", None),
+            )
+
         return args
 
     def run_container(
@@ -322,9 +342,38 @@ class DockerRunner:
         self,
         docker_client: DockerClientInterface | None = None,
         image: str | None = None,
+        workspace_root: str | Path | None = None,
     ) -> None:
         self.client = docker_client if docker_client is not None else CLIDockerClient()
         self.image = image or settings.DOCKER_IMAGE
+        self.workspace_root = (
+            Path(workspace_root) if workspace_root is not None else None
+        )
+
+    def _resolve_and_validate_workspace(self, workspace_path: str | Path) -> Path:
+        """Resolve and validate workspace containment against authorized root."""
+        if not getattr(settings, "DOCKER_CONTAINER_GATEKEEPER_ENFORCED", True):
+            return Path(workspace_path).resolve()
+
+        effective_root = self.workspace_root
+        if effective_root is None:
+            default_root = Path(settings.WORKSPACE_ROOT).resolve()
+            try:
+                resolved_cand = Path(workspace_path).resolve()
+                if resolved_cand.is_relative_to(default_root):
+                    effective_root = default_root
+            except ValueError:
+                pass
+
+            if effective_root is None and not settings.is_production:
+                effective_root = Path(workspace_path).resolve().parent
+            elif effective_root is None:
+                effective_root = default_root
+
+        return SandboxContainerPayloadValidator.validate_workspace_path(
+            workspace_path,
+            workspace_root=effective_root,
+        )
 
     def execute(
         self,
@@ -337,7 +386,17 @@ class DockerRunner:
         """Synchronously execute a command inside a sandboxed container."""
         active_policy = policy or ExecutionPolicy()
         exec_id = execution_id or f"exec-{uuid.uuid4().hex[:12]}"
-        ws_dir = Path(workspace_path).resolve()
+
+        # Workspace gatekeeper validation
+        try:
+            ws_dir = self._resolve_and_validate_workspace(workspace_path)
+        except WorkspaceSecurityError as ws_err:
+            return ExecutionResult(
+                execution_id=exec_id,
+                status=ExecutionStatus.REJECTED,
+                exit_code=126,
+                errors=[f"Workspace rejected by security gatekeeper: {ws_err}"],
+            )
 
         # Policy validation
         try:
@@ -371,13 +430,21 @@ class DockerRunner:
             )
 
         started_at = datetime.now(UTC).isoformat()
-        output = self.client.run_container(
-            image=self.image,
-            command=command,
-            workspace_path=ws_dir,
-            policy=active_policy,
-            environment=sanitized_env,
-        )
+        try:
+            output = self.client.run_container(
+                image=self.image,
+                command=command,
+                workspace_path=ws_dir,
+                policy=active_policy,
+                environment=sanitized_env,
+            )
+        except ContainerSecurityError as sec_err:
+            return ExecutionResult(
+                execution_id=exec_id,
+                status=ExecutionStatus.REJECTED,
+                exit_code=126,
+                errors=[f"Container configuration rejected by gatekeeper: {sec_err}"],
+            )
         completed_at = datetime.now(UTC).isoformat()
 
         return self._format_result(
@@ -399,7 +466,17 @@ class DockerRunner:
         """Asynchronously execute a command inside a sandboxed container."""
         active_policy = policy or ExecutionPolicy()
         exec_id = execution_id or f"exec-{uuid.uuid4().hex[:12]}"
-        ws_dir = Path(workspace_path).resolve()
+
+        # Workspace gatekeeper validation
+        try:
+            ws_dir = self._resolve_and_validate_workspace(workspace_path)
+        except WorkspaceSecurityError as ws_err:
+            return ExecutionResult(
+                execution_id=exec_id,
+                status=ExecutionStatus.REJECTED,
+                exit_code=126,
+                errors=[f"Workspace rejected by security gatekeeper: {ws_err}"],
+            )
 
         try:
             ExecutionPolicyEnforcer.validate_command(command, active_policy)
@@ -432,13 +509,21 @@ class DockerRunner:
             )
 
         started_at = datetime.now(UTC).isoformat()
-        output = await self.client.run_container_async(
-            image=self.image,
-            command=command,
-            workspace_path=ws_dir,
-            policy=active_policy,
-            environment=sanitized_env,
-        )
+        try:
+            output = await self.client.run_container_async(
+                image=self.image,
+                command=command,
+                workspace_path=ws_dir,
+                policy=active_policy,
+                environment=sanitized_env,
+            )
+        except ContainerSecurityError as sec_err:
+            return ExecutionResult(
+                execution_id=exec_id,
+                status=ExecutionStatus.REJECTED,
+                exit_code=126,
+                errors=[f"Container configuration rejected by gatekeeper: {sec_err}"],
+            )
         completed_at = datetime.now(UTC).isoformat()
 
         return self._format_result(

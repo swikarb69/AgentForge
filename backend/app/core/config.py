@@ -64,6 +64,13 @@ class Settings(BaseSettings):
         "python-unit-tests",
         "python-quality-checks",
     ]
+    DOCKER_CONTAINER_GATEKEEPER_ENFORCED: bool = True
+    DOCKER_NAMED_VOLUME: str | None = None
+    SANDBOX_ALLOWED_IMAGES: list[str] = [
+        "agentforge-sandbox:latest",
+        "agentforge-sandbox:0.11.0",
+        "agentforge-sandbox",
+    ]
 
     # Repository Scanner Configuration
     MAX_FILE_SIZE: int = 1_048_576  # 1MB limit per file
@@ -166,6 +173,11 @@ class Settings(BaseSettings):
                 errors.append(
                     "CORS_ORIGINS must not contain wildcard '*' in production. "
                     "Explicitly specify allowed origins."
+                )
+            if not self.DOCKER_CONTAINER_GATEKEEPER_ENFORCED:
+                errors.append(
+                    "DOCKER_CONTAINER_GATEKEEPER_ENFORCED cannot be disabled "
+                    "in production."
                 )
             active_provider = self.effective_ai_provider
             if active_provider == "gemini" and not self.GEMINI_API_KEY:

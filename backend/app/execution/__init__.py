@@ -7,6 +7,12 @@ from backend.app.execution.docker_runner import (
     DockerRunner,
     MockDockerClient,
 )
+from backend.app.execution.exceptions import (
+    ContainerSecurityError,
+    ExecutionSecurityError,
+    WorkspaceSecurityError,
+)
+from backend.app.execution.gatekeeper import SandboxContainerPayloadValidator
 from backend.app.execution.models import (
     CreateExecutionRequest,
     ExecutionPolicy,
@@ -33,6 +39,7 @@ from backend.app.execution.workspace import WorkspaceManager
 
 __all__ = [
     "CLIDockerClient",
+    "ContainerSecurityError",
     "CreateExecutionRequest",
     "DockerClientInterface",
     "DockerExecutionOutput",
@@ -41,6 +48,7 @@ __all__ = [
     "ExecutionPolicyEnforcer",
     "ExecutionRequest",
     "ExecutionResult",
+    "ExecutionSecurityError",
     "ExecutionService",
     "ExecutionStatus",
     "FORBIDDEN_SHELL_METACHARACTERS",
@@ -49,6 +57,7 @@ __all__ = [
     "PatchApplier",
     "PatchApplicationResult",
     "ResourceUsage",
+    "SandboxContainerPayloadValidator",
     "TestExecutor",
     "TestSummary",
     "VerificationEngine",
@@ -56,4 +65,5 @@ __all__ = [
     "VerificationReport",
     "WorkspaceManager",
     "WorkspaceMetadata",
+    "WorkspaceSecurityError",
 ]

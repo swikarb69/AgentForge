@@ -10,6 +10,8 @@ from contextlib import asynccontextmanager, contextmanager, suppress
 from pathlib import Path
 
 from backend.app.core.config import settings
+from backend.app.execution.exceptions import WorkspaceSecurityError
+from backend.app.execution.gatekeeper import SandboxContainerPayloadValidator
 from backend.app.execution.models import WorkspaceMetadata
 
 EXCLUDED_DIR_NAMES: set[str] = {
@@ -82,6 +84,12 @@ class WorkspaceManager:
                 return True
         return False
 
+    def validate_workspace_path(self, workspace_path: Path | str) -> Path:
+        """Validate workspace path is strictly contained within self.workspace_root."""
+        return SandboxContainerPayloadValidator.validate_workspace_path(
+            workspace_path, workspace_root=self.workspace_root
+        )
+
     def create_workspace(
         self,
         repo_path: str | Path,
@@ -99,6 +107,7 @@ class WorkspaceManager:
         Raises:
             FileNotFoundError: If repo_path does not exist.
             NotADirectoryError: If repo_path is not a directory.
+            WorkspaceSecurityError: If workspace_id attempts directory traversal.
             ValueError: If workspace size exceeds permitted limit.
         """
         source = Path(repo_path).resolve()
@@ -107,8 +116,35 @@ class WorkspaceManager:
         if not source.is_dir():
             raise NotADirectoryError(f"Source repository is not a directory: {source}")
 
+        if workspace_id:
+            if "\x00" in workspace_id:
+                raise WorkspaceSecurityError("Null byte detected in workspace ID.")
+            if (
+                ".." in Path(workspace_id).parts
+                or "/" in workspace_id
+                or "\\" in workspace_id
+            ):
+                raise WorkspaceSecurityError(
+                    "Path traversal or separator detected in workspace ID: "
+                    f"'{workspace_id}'."
+                )
+
         ws_id = workspace_id or f"ws-{uuid.uuid4().hex[:12]}"
+        root_resolved = self.workspace_root.resolve()
         dest_dir = (self.workspace_root / ws_id).resolve()
+
+        try:
+            if not dest_dir.is_relative_to(root_resolved) or dest_dir == root_resolved:
+                raise WorkspaceSecurityError(
+                    f"Destination workspace '{dest_dir}' escapes authorized "
+                    f"root '{root_resolved}'."
+                )
+        except ValueError as exc:
+            raise WorkspaceSecurityError(
+                f"Destination workspace '{dest_dir}' is outside authorized "
+                f"root '{root_resolved}'."
+            ) from exc
+
         dest_dir.mkdir(parents=True, exist_ok=True)
 
         total_files = 0
@@ -168,6 +204,7 @@ class WorkspaceManager:
     def cleanup(self, workspace: WorkspaceMetadata | str | Path) -> bool:
         """Recursively delete the workspace directory.
 
+        Ensures target path is strictly contained within self.workspace_root.
         Returns True if deleted or did not exist, False on failure.
         """
         if isinstance(workspace, WorkspaceMetadata):
@@ -175,13 +212,26 @@ class WorkspaceManager:
         else:
             target_path = Path(workspace)
 
-        if not target_path.exists():
+        resolved_target = target_path.resolve()
+        root_resolved = self.workspace_root.resolve()
+
+        # Target must be strictly inside root, and cannot be the root itself
+        try:
+            if (
+                not resolved_target.is_relative_to(root_resolved)
+                or resolved_target == root_resolved
+            ):
+                return False
+        except ValueError:
+            return False
+
+        if not resolved_target.exists():
             if isinstance(workspace, WorkspaceMetadata):
                 workspace.cleaned_up = True
             return True
 
         try:
-            shutil.rmtree(target_path, onerror=_remove_readonly)
+            shutil.rmtree(resolved_target, onerror=_remove_readonly)
             if isinstance(workspace, WorkspaceMetadata):
                 workspace.cleaned_up = True
             return True
