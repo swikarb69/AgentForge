@@ -540,3 +540,53 @@ async def test_get_and_list_releases(
 
     filtered_status = service.list_releases(status=ReleaseStatus.SUCCEEDED)
     assert len(filtered_status) == 2
+
+
+def test_release_service_provider_selection_logic(
+    release_setup: tuple[
+        ControlledReleaseService,
+        ApprovalRequestService,
+        MockReleaseProvider,
+        AuditTrailStore,
+    ],
+) -> None:
+    """Verify release services choose provider based on GITHUB_TOKEN."""
+    from pydantic import SecretStr
+
+    from backend.app.approval.release_provider import (
+        GitHubReleaseProvider,
+        MockReleaseProvider,
+    )
+    from backend.app.approval.release_service import ControlledReleaseService
+    from backend.app.approval.service import ApprovalService
+    from backend.app.core.config import settings
+
+    _, req_service, _, _ = release_setup
+    orig_token = settings.GITHUB_TOKEN
+    test_gh_val = "ghp_test_token_1234567890"  # noqa: S105
+
+    try:
+        # 1. When GITHUB_TOKEN is None, defaults to MockReleaseProvider
+        settings.GITHUB_TOKEN = None
+        s1 = ControlledReleaseService(request_service=req_service)
+        assert isinstance(s1.release_provider, MockReleaseProvider)
+
+        appr1 = ApprovalService()
+        assert isinstance(appr1.release_provider, MockReleaseProvider)
+
+        # 2. When GITHUB_TOKEN is set, defaults to GitHubReleaseProvider
+        settings.GITHUB_TOKEN = SecretStr(test_gh_val)
+        s2 = ControlledReleaseService(request_service=req_service)
+        assert isinstance(s2.release_provider, GitHubReleaseProvider)
+        assert s2.release_provider.token == test_gh_val
+
+        appr2 = ApprovalService()
+        assert isinstance(appr2.release_provider, GitHubReleaseProvider)
+        assert appr2.release_provider.token == test_gh_val
+
+        # 3. GitHubReleaseProvider reads settings when token is None
+        gh_provider = GitHubReleaseProvider()
+        assert gh_provider.token == test_gh_val
+
+    finally:
+        settings.GITHUB_TOKEN = orig_token

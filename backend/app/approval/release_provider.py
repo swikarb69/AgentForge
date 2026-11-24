@@ -163,10 +163,27 @@ class GitHubReleaseProvider(ReleaseProvider):
     def __init__(
         self,
         token: str | None = None,
-        base_api_url: str = "https://api.github.com",
+        base_api_url: str | None = None,
     ) -> None:
-        self.token = token or os.environ.get("GITHUB_TOKEN", "")
-        self.base_api_url = base_api_url.rstrip("/")
+        if token is not None:
+            self.token = token
+        else:
+            from backend.app.core.config import settings
+
+            gh_token = settings.GITHUB_TOKEN
+            if gh_token and gh_token.get_secret_value().strip():
+                self.token = gh_token.get_secret_value()
+            else:
+                self.token = os.environ.get("GITHUB_TOKEN", "")
+
+        if base_api_url is not None:
+            self.base_api_url = base_api_url.rstrip("/")
+        else:
+            from backend.app.core.config import settings
+
+            self.base_api_url = (
+                settings.GITHUB_API_URL or "https://api.github.com"
+            ).rstrip("/")
 
     def _ensure_token(self) -> None:
         """Validate token presence before making live API requests."""

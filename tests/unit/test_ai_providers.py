@@ -509,3 +509,81 @@ async def test_live_gemini_integration(sample_plan: ImplementationPlan) -> None:
     )
     assert len(changes) > 0
     assert provider.last_usage is not None
+
+
+@pytest.mark.skipif(
+    os.environ.get("AGENTFORGE_LIVE_INTEGRATION_TESTS") != "true"
+    or not os.environ.get("OPENAI_API_KEY"),
+    reason=(
+        "Live OpenAI integration test requires AGENTFORGE_LIVE_INTEGRATION_TESTS=true "
+        "and OPENAI_API_KEY"
+    ),
+)
+@pytest.mark.anyio
+async def test_live_openai_integration(sample_plan: ImplementationPlan) -> None:
+    """Optional live test validating integration against OpenAI endpoint."""
+    provider = OpenAICodeGenerationProvider()
+    request = GenerationRequest(
+        generation_id="GEN-LIVE-OAI-01",
+        plan=sample_plan,
+        repository_path=".",
+        permitted_files=["app/auth.py"],
+    )
+    changes = await provider.generate(
+        request,
+        {
+            "prompt": (
+                "Update auth.py to reject token 'expired'. Return JSON with changes."
+            )
+        },
+    )
+    assert len(changes) > 0
+    assert provider.last_usage is not None
+
+
+def test_effective_ai_provider_resolution() -> None:
+    """Verify effective_ai_provider resolves fallback to AI_PROVIDER."""
+    from backend.app.core.config import settings
+
+    orig_ai = settings.AI_PROVIDER
+    orig_gen = settings.GENERATION_PROVIDER
+    try:
+        settings.AI_PROVIDER = "gemini"
+        settings.GENERATION_PROVIDER = "mock"
+        assert settings.effective_ai_provider == "gemini"
+
+        settings.AI_PROVIDER = "openai"
+        settings.GENERATION_PROVIDER = "mock"
+        assert settings.effective_ai_provider == "openai"
+
+        settings.AI_PROVIDER = "mock"
+        settings.GENERATION_PROVIDER = "openai"
+        assert settings.effective_ai_provider == "openai"
+
+        settings.AI_PROVIDER = "mock"
+        settings.GENERATION_PROVIDER = "mock"
+        assert settings.effective_ai_provider == "mock"
+    finally:
+        settings.AI_PROVIDER = orig_ai
+        settings.GENERATION_PROVIDER = orig_gen
+
+
+def test_code_generator_and_repair_engine_wiring() -> None:
+    """Verify CodeGenerator and repair engine default to effective_ai_provider."""
+    from backend.app.core.config import settings
+    from backend.app.debugging.repair_engine import RepairProposalEngine
+    from backend.app.generation.generator import CodeGenerator
+
+    orig_ai = settings.AI_PROVIDER
+    orig_gen = settings.GENERATION_PROVIDER
+    try:
+        settings.AI_PROVIDER = "mock"
+        settings.GENERATION_PROVIDER = "mock"
+        gen = CodeGenerator()
+        assert isinstance(gen.provider, MockCodeGenerationProvider)
+
+        repair_engine = RepairProposalEngine()
+        assert isinstance(repair_engine.provider, MockCodeGenerationProvider)
+    finally:
+        settings.AI_PROVIDER = orig_ai
+        settings.GENERATION_PROVIDER = orig_gen

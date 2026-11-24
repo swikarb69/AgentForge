@@ -71,7 +71,7 @@ jobs:
       - name: Install Security Tools
         run: |
           python -m pip install --upgrade pip
-          pip install bandit pip-audit
+          pip install -e ".[dev]"
 
       - name: Bandit Security Scan
         run: |
@@ -79,7 +79,7 @@ jobs:
 
       - name: Dependency Vulnerability Audit
         run: |
-          pip-audit --desc || echo "pip-audit completed"
+          pip-audit --desc
 
   test-suite:
     name: Pytest Unit, Integration & E2E Suite

@@ -30,7 +30,7 @@ class CodeGenerator:
         self.provider = (
             provider
             if provider is not None
-            else get_provider(settings.GENERATION_PROVIDER)
+            else get_provider(settings.effective_ai_provider)
         )
 
     async def generate_changes(

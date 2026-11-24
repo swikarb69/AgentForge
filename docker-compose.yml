@@ -13,10 +13,21 @@ services:
       - APP_VERSION=0.11.0
       - STORAGE_BACKEND=sqlite
       - DATABASE_URL=sqlite:////app/agentforge-storage/agentforge.db
-      - API_KEY_AUTH_ENABLED=false
+      - API_KEY_AUTH_ENABLED=true
+      - API_KEY=${API_KEY:-}
+      - CORS_ORIGINS=["http://localhost:3000"]
+      - AI_PROVIDER=${AI_PROVIDER:-mock}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     volumes:
       - agentforge-storage:/app/agentforge-storage
       - agentforge-artifacts:/app/agentforge-artifacts
+      # Production note: Mounting /var/run/docker.sock allows AgentForge to invoke
+      # the isolated CLI Docker sandbox runner. For hardened enterprise environments,
+      # consider routing via a restricted docker-socket-proxy (e.g., tecnativa/docker-socket-proxy)
+      # granting POST /containers/create, /containers/{id}/start, /containers/{id}/wait,
+      # and restricting host filesystem mounts.
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]

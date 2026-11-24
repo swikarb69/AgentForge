@@ -120,6 +120,13 @@ class Settings(BaseSettings):
         """True if running in production mode."""
         return self.ENVIRONMENT.lower() in ("production", "prod")
 
+    @property
+    def effective_ai_provider(self) -> str:
+        """Resolve active AI provider (GENERATION_PROVIDER fallback to AI_PROVIDER)."""
+        if self.GENERATION_PROVIDER and self.GENERATION_PROVIDER.lower() != "mock":
+            return self.GENERATION_PROVIDER.lower()
+        return self.AI_PROVIDER.lower()
+
     def validate_configuration(self) -> list[str]:
         """Validate safety constraints and configuration consistency."""
         errors: list[str] = []
@@ -138,16 +145,27 @@ class Settings(BaseSettings):
 
         # 2. Production requirements
         if self.is_production:
-            if self.API_KEY_AUTH_ENABLED and not self.API_KEY:
+            if not self.API_KEY_AUTH_ENABLED:
                 errors.append(
-                    "API_KEY must be provided when API_KEY_AUTH_ENABLED is True "
-                    "in production."
+                    "API_KEY_AUTH_ENABLED must be True in production environments "
+                    "to prevent unauthorized access."
                 )
-            if self.AI_PROVIDER == "gemini" and not self.GEMINI_API_KEY:
+            elif not self.API_KEY or not self.API_KEY.get_secret_value().strip():
+                errors.append(
+                    "API_KEY must be provided with a non-empty secret when "
+                    "API_KEY_AUTH_ENABLED is True in production."
+                )
+            if "*" in self.CORS_ORIGINS:
+                errors.append(
+                    "CORS_ORIGINS must not contain wildcard '*' in production. "
+                    "Explicitly specify allowed origins."
+                )
+            active_provider = self.effective_ai_provider
+            if active_provider == "gemini" and not self.GEMINI_API_KEY:
                 errors.append(
                     "GEMINI_API_KEY must be configured when AI_PROVIDER is 'gemini'."
                 )
-            if self.AI_PROVIDER == "openai" and not self.OPENAI_API_KEY:
+            if active_provider == "openai" and not self.OPENAI_API_KEY:
                 errors.append(
                     "OPENAI_API_KEY must be configured when AI_PROVIDER is 'openai'."
                 )

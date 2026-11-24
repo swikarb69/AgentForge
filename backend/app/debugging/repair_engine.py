@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from backend.app.core.config import settings
 from backend.app.debugging.models import (
     DiagnosticEvidence,
     RepairProposal,
@@ -20,7 +21,7 @@ from backend.app.generation.models import (
 from backend.app.generation.patch import PatchBuilder
 from backend.app.generation.provider import (
     CodeGenerationProvider,
-    MockCodeGenerationProvider,
+    get_provider,
 )
 from backend.app.generation.validator import PatchValidator
 from backend.app.planning.models import ImplementationPlan
@@ -35,7 +36,11 @@ class RepairProposalEngine:
         validator: PatchValidator | None = None,
         patch_builder: PatchBuilder | None = None,
     ) -> None:
-        self.provider = provider or MockCodeGenerationProvider()
+        self.provider = (
+            provider
+            if provider is not None
+            else get_provider(settings.effective_ai_provider)
+        )
         self.validator = validator or PatchValidator()
         self.patch_builder = patch_builder or PatchBuilder()
 

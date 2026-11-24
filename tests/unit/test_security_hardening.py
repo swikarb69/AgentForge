@@ -187,3 +187,91 @@ def test_settings_secret_redaction() -> None:
     summary = settings.get_redacted_summary()
     assert summary["OPENAI_API_KEY"] == "[CONFIGURED]"
     assert "sk-test-secret-value-123" not in str(summary)
+
+
+def test_production_configuration_security_rules() -> None:
+    """Verify rigorous security constraints are validated in production mode."""
+    orig_env = settings.ENVIRONMENT
+    orig_auth = settings.API_KEY_AUTH_ENABLED
+    orig_key = settings.API_KEY
+    orig_cors = settings.CORS_ORIGINS
+    orig_ai = settings.AI_PROVIDER
+    orig_gen = settings.GENERATION_PROVIDER
+    orig_gem = settings.GEMINI_API_KEY
+    orig_oai = settings.OPENAI_API_KEY
+
+    try:
+        settings.ENVIRONMENT = "production"
+
+        # 1. API key auth disabled in production
+        settings.API_KEY_AUTH_ENABLED = False
+        errors = settings.validate_configuration()
+        assert any("API_KEY_AUTH_ENABLED must be True" in err for err in errors)
+
+        # 2. API key auth enabled but key missing or whitespace
+        settings.API_KEY_AUTH_ENABLED = True
+        settings.API_KEY = None
+        errors = settings.validate_configuration()
+        assert any("API_KEY must be provided" in err for err in errors)
+
+        settings.API_KEY = SecretStr("   ")
+        errors = settings.validate_configuration()
+        assert any(
+            "API_KEY must be provided with a non-empty secret" in err for err in errors
+        )
+
+        settings.API_KEY = SecretStr("valid-production-api-key")  # noqa: S106
+
+        # 3. Wildcard CORS in production
+        settings.CORS_ORIGINS = ["*"]
+        errors = settings.validate_configuration()
+        assert any(
+            "CORS_ORIGINS must not contain wildcard '*'" in err for err in errors
+        )
+
+        settings.CORS_ORIGINS = ["https://app.agentforge.dev"]
+
+        # 4. Active provider missing required API key
+        settings.AI_PROVIDER = "gemini"
+        settings.GENERATION_PROVIDER = "mock"
+        settings.GEMINI_API_KEY = None
+        errors = settings.validate_configuration()
+        assert any("GEMINI_API_KEY must be configured" in err for err in errors)
+
+        settings.AI_PROVIDER = "openai"
+        settings.GENERATION_PROVIDER = "mock"
+        settings.OPENAI_API_KEY = None
+        errors = settings.validate_configuration()
+        assert any("OPENAI_API_KEY must be configured" in err for err in errors)
+
+    finally:
+        settings.ENVIRONMENT = orig_env
+        settings.API_KEY_AUTH_ENABLED = orig_auth
+        settings.API_KEY = orig_key
+        settings.CORS_ORIGINS = orig_cors
+        settings.AI_PROVIDER = orig_ai
+        settings.GENERATION_PROVIDER = orig_gen
+        settings.GEMINI_API_KEY = orig_gem
+        settings.OPENAI_API_KEY = orig_oai
+
+
+def test_production_mode_disables_docs_endpoints() -> None:
+    """Verify OpenAPI and documentation endpoints are disabled in production."""
+    from fastapi import FastAPI
+
+    orig_env = settings.ENVIRONMENT
+    try:
+        settings.ENVIRONMENT = "production"
+        assert settings.is_production is True
+
+        prod_app = FastAPI(
+            docs_url=None if settings.is_production else "/docs",
+            redoc_url=None if settings.is_production else "/redoc",
+            openapi_url=None if settings.is_production else "/openapi.json",
+        )
+        with TestClient(prod_app) as prod_client:
+            assert prod_client.get("/docs").status_code == 404
+            assert prod_client.get("/redoc").status_code == 404
+            assert prod_client.get("/openapi.json").status_code == 404
+    finally:
+        settings.ENVIRONMENT = orig_env

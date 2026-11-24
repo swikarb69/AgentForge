@@ -146,9 +146,9 @@ app = FastAPI(
         "AgentForge: Autonomous AI software-engineering agent transforming "
         "GitHub issues into tested, reviewed, and auditable pull requests."
     ),
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url=None if settings.is_production else "/docs",
+    redoc_url=None if settings.is_production else "/redoc",
+    openapi_url=None if settings.is_production else "/openapi.json",
     lifespan=lifespan,
 )
 

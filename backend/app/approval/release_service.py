@@ -23,10 +23,12 @@ from backend.app.approval.release_models import (
     ReleaseStatus,
 )
 from backend.app.approval.release_provider import (
+    GitHubReleaseProvider,
     MockReleaseProvider,
     ReleaseProvider,
 )
 from backend.app.approval.request_service import ApprovalRequestService
+from backend.app.core.config import settings
 
 
 class ControlledReleaseService:
@@ -43,7 +45,12 @@ class ControlledReleaseService:
         self.request_service = request_service
         self.auth_engine = auth_engine or AuthorizationEngine()
         self.readiness_engine = readiness_engine or ReleaseReadinessEngine()
-        self.release_provider = release_provider or MockReleaseProvider()
+        if release_provider is not None:
+            self.release_provider = release_provider
+        elif settings.GITHUB_TOKEN and settings.GITHUB_TOKEN.get_secret_value().strip():
+            self.release_provider = GitHubReleaseProvider()
+        else:
+            self.release_provider = MockReleaseProvider()
         self.audit_store = audit_store or request_service.audit_store
         self._releases: dict[str, ReleaseExecutionRecord] = {}
         self._releases_by_candidate: dict[str, str] = {}
