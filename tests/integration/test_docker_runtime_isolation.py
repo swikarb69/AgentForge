@@ -29,6 +29,7 @@ from backend.app.execution.models import (
 # On GitHub Actions Ubuntu runner, Docker is running and agentforge-sandbox is built.
 docker_cli = shutil.which("docker")
 _docker_responsive = False
+_sandbox_image_available = False
 if docker_cli:
     try:
         cmd = [docker_cli]
@@ -45,12 +46,28 @@ if docker_cli:
             check=False,
         )
         _docker_responsive = res.returncode == 0
+        if _docker_responsive:
+            insp_cmd = [docker_cli]
+            if docker_host:
+                insp_cmd.extend(["-H", docker_host])
+            insp_cmd.extend(["image", "inspect", "agentforge-sandbox:latest"])
+            insp_res = subprocess.run(  # noqa: S603  # nosec B603
+                insp_cmd,
+                capture_output=True,
+                timeout=3,
+                check=False,
+            )
+            _sandbox_image_available = insp_res.returncode == 0
     except (subprocess.SubprocessError, OSError):
         _docker_responsive = False
+        _sandbox_image_available = False
 
 pytestmark = pytest.mark.skipif(
-    not _docker_responsive,
-    reason="Live Docker daemon is not running; skipping live container runtime tests.",
+    not _docker_responsive or not _sandbox_image_available,
+    reason=(
+        "Live Docker daemon or 'agentforge-sandbox:latest' image is not available; "
+        "skipping live container runtime tests."
+    ),
 )
 
 

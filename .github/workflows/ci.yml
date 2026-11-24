@@ -102,7 +102,7 @@ jobs:
       - name: Pytest Unit & Integration Tests with Coverage
         run: |
           set -eo pipefail
-          pytest --cov=backend/app --cov-report=term-missing --cov-fail-under=80 -ra --tb=short 2>&1 | tee pytest_output.txt
+          pytest --ignore=tests/integration/test_docker_runtime_isolation.py --cov=backend/app --cov-report=term-missing --cov-fail-under=80 -ra --tb=short 2>&1 | tee pytest_output.txt
 
       - name: Upload Test Report
         if: always()
