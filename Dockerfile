@@ -32,6 +32,7 @@ ENV PYTHONUNBUFFERED=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
+    docker.io \
     && rm -rf /var/lib/apt/lists/*
 
 # Create dedicated unprivileged non-root user

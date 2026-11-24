@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     SANDBOX_MEMORY_LIMIT: str = "512m"
     SANDBOX_CPU_LIMIT: int = 1
     DOCKER_IMAGE: str = "agentforge-sandbox:latest"
+    DOCKER_HOST: str | None = None
     WORKSPACE_ROOT: str = "agentforge-workspaces"
     WORKSPACE_SIZE_LIMIT: int = 50_000_000  # 50MB
     WORKSPACE_RETENTION_SECONDS: int = 3600  # 1 hour
@@ -127,6 +128,13 @@ class Settings(BaseSettings):
             return self.GENERATION_PROVIDER.lower()
         return self.AI_PROVIDER.lower()
 
+    @property
+    def is_auth_enforced(self) -> bool:
+        """Production mode ALWAYS enforces authentication; cannot be overridden."""
+        if self.is_production:
+            return True
+        return self.API_KEY_AUTH_ENABLED
+
     def validate_configuration(self) -> list[str]:
         """Validate safety constraints and configuration consistency."""
         errors: list[str] = []
@@ -147,13 +155,12 @@ class Settings(BaseSettings):
         if self.is_production:
             if not self.API_KEY_AUTH_ENABLED:
                 errors.append(
-                    "API_KEY_AUTH_ENABLED must be True in production environments "
-                    "to prevent unauthorized access."
+                    "API_KEY_AUTH_ENABLED cannot be disabled in production. "
+                    "Authentication is mandatory."
                 )
-            elif not self.API_KEY or not self.API_KEY.get_secret_value().strip():
+            if not self.API_KEY or not self.API_KEY.get_secret_value().strip():
                 errors.append(
-                    "API_KEY must be provided with a non-empty secret when "
-                    "API_KEY_AUTH_ENABLED is True in production."
+                    "API_KEY must be provided with a non-empty secret in production."
                 )
             if "*" in self.CORS_ORIGINS:
                 errors.append(

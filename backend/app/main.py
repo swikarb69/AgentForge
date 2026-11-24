@@ -78,7 +78,13 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
-        if not settings.API_KEY_AUTH_ENABLED or request.method == "OPTIONS":
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        # IMMUTABLE PRODUCTION GUARD:
+        # Authentication is ALWAYS enforced in production;
+        # cannot be disabled via Compose or environment overrides.
+        if not settings.is_auth_enforced:
             return await call_next(request)
 
         if _is_public_path(request.url.path):

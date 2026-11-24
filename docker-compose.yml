@@ -1,4 +1,39 @@
 services:
+  # Hardened Docker Socket Proxy Sidecar
+  # Mediates container execution for the sandbox without exposing raw host Docker socket.
+  # Restricts API access strictly to isolated container lifecycle operations.
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: agentforge-docker-proxy
+    restart: unless-stopped
+    environment:
+      - CONTAINERS=1   # Allow creating, starting, and inspecting containers
+      - IMAGES=1       # Allow inspecting sandbox images
+      - INFO=1         # Allow docker info ping
+      - POST=1         # Allow POST requests for container operations
+      - BUILD=0        # Disallow building images
+      - COMMIT=0       # Disallow container commits
+      - CONFIGS=0      # Disallow configs
+      - DISTRIBUTION=0 # Disallow distribution
+      - EXEC=0         # Disallow docker exec
+      - GRPC=0         # Disallow grpc
+      - NETWORKS=0     # Disallow network alterations
+      - NODES=0        # Disallow swarm nodes
+      - PLUGINS=0      # Disallow plugins
+      - SERVICES=0     # Disallow swarm services
+      - SESSION=0      # Disallow sessions
+      - SWARM=0        # Disallow swarm
+      - SYSTEM=0       # Disallow system modification
+      - TASKS=0        # Disallow swarm tasks
+      - VOLUMES=0      # Disallow creating host volume mounts
+      - SECRETS=0      # Disallow secrets access
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - agentforge-internal
+    security_opt:
+      - no-new-privileges:true
+
   agentforge:
     build:
       context: .
@@ -16,6 +51,7 @@ services:
       - API_KEY_AUTH_ENABLED=true
       - API_KEY=${API_KEY:-}
       - CORS_ORIGINS=["http://localhost:3000"]
+      - DOCKER_HOST=tcp://docker-proxy:2375
       - AI_PROVIDER=${AI_PROVIDER:-mock}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -23,12 +59,12 @@ services:
     volumes:
       - agentforge-storage:/app/agentforge-storage
       - agentforge-artifacts:/app/agentforge-artifacts
-      # Production note: Mounting /var/run/docker.sock allows AgentForge to invoke
-      # the isolated CLI Docker sandbox runner. For hardened enterprise environments,
-      # consider routing via a restricted docker-socket-proxy (e.g., tecnativa/docker-socket-proxy)
-      # granting POST /containers/create, /containers/{id}/start, /containers/{id}/wait,
-      # and restricting host filesystem mounts.
-      - /var/run/docker.sock:/var/run/docker.sock
+      - agentforge-workspaces:/app/agentforge-workspaces
+    depends_on:
+      - docker-proxy
+    networks:
+      - agentforge-internal
+      - default
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
@@ -44,8 +80,15 @@ services:
       - no-new-privileges:true
     restart: unless-stopped
 
+networks:
+  agentforge-internal:
+    name: agentforge-internal
+    internal: true
+
 volumes:
   agentforge-storage:
     name: agentforge-storage
   agentforge-artifacts:
     name: agentforge-artifacts
+  agentforge-workspaces:
+    name: agentforge-workspaces

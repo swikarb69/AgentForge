@@ -1,6 +1,7 @@
 """Restricted Docker runner for sandboxed execution without host fallback."""
 
 import asyncio
+import os
 import shutil
 import subprocess  # nosec B404
 import time
@@ -66,16 +67,29 @@ class DockerClientInterface(ABC):
 class CLIDockerClient(DockerClientInterface):
     """Executes container commands via the docker CLI binary."""
 
-    def __init__(self, docker_binary: str | None = None) -> None:
+    def __init__(
+        self,
+        docker_binary: str | None = None,
+        docker_host: str | None = None,
+    ) -> None:
         self.docker_binary = docker_binary or shutil.which("docker")
+        self.docker_host = (
+            docker_host
+            or getattr(settings, "DOCKER_HOST", None)
+            or os.environ.get("DOCKER_HOST")
+        )
 
     def is_available(self) -> bool:
         """Check if docker binary exists and daemon responds to ping."""
         if not self.docker_binary:
             return False
+        cmd = [self.docker_binary]
+        if self.docker_host:
+            cmd.extend(["-H", self.docker_host])
+        cmd.append("info")
         try:
             res = subprocess.run(  # noqa: S603  # nosec B603
-                [self.docker_binary, "info"],
+                cmd,
                 capture_output=True,
                 timeout=5,
                 check=False,
@@ -93,28 +107,32 @@ class CLIDockerClient(DockerClientInterface):
         environment: dict[str, str] | None,
     ) -> list[str]:
         """Construct isolated, restricted docker run command arguments."""
-        args: list[str] = [
-            self.docker_binary or "docker",
-            "run",
-            "--rm",
-            "--user",
-            "10001:10001",
-            "--cap-drop",
-            "ALL",
-            "--read-only",
-            "--tmpfs",
-            "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108  # nosec B108
-            "--memory",
-            policy.memory_limit,
-            f"--cpus={policy.cpu_limit}",
-            f"--pids-limit={policy.process_limit}",
-            "--network",
-            "none" if not policy.network_enabled else "bridge",
-            "-v",
-            f"{workspace_path.resolve()}:/sandbox/workspace:rw",
-            "-w",
-            "/sandbox/workspace",
-        ]
+        args: list[str] = [self.docker_binary or "docker"]
+        if self.docker_host:
+            args.extend(["-H", self.docker_host])
+        args.extend(
+            [
+                "run",
+                "--rm",
+                "--user",
+                "10001:10001",
+                "--cap-drop",
+                "ALL",
+                "--read-only",
+                "--tmpfs",
+                "/tmp:rw,noexec,nosuid,size=64m",  # noqa: S108  # nosec B108
+                "--memory",
+                policy.memory_limit,
+                f"--cpus={policy.cpu_limit}",
+                f"--pids-limit={policy.process_limit}",
+                "--network",
+                "none" if not policy.network_enabled else "bridge",
+                "-v",
+                f"{workspace_path.resolve()}:/sandbox/workspace:rw",
+                "-w",
+                "/sandbox/workspace",
+            ]
+        )
         if environment:
             for key, val in environment.items():
                 args.extend(["-e", f"{key}={val}"])
