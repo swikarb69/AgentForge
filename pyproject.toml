@@ -47,6 +47,11 @@ ignore = ["S101"]  # Allow assert statements in tests
 [tool.ruff.lint.isort]
 known-first-party = ["backend"]
 
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
 [tool.mypy]
 python_version = "3.13"
 explicit_package_bases = true

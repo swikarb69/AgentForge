@@ -70,16 +70,14 @@ AgentForge abstracts the generation model behind `CodeGenerationProvider`:
 class CodeGenerationProvider(ABC):
     @property
     @abstractmethod
-    def provider_type(self) -> str:
-        ...
+    def provider_type(self) -> str: ...
 
     @abstractmethod
     async def generate(
         self,
         request: GenerationRequest,
         context_payload: dict[str, Any],
-    ) -> list[GeneratedFileChange]:
-        ...
+    ) -> list[GeneratedFileChange]: ...
 ```
 
 ### Available Providers
