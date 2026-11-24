@@ -1,12 +1,13 @@
 """Docker container creation gatekeeper and payload validator.
 
 Enforces zero-trust isolation boundaries at the container-creation and execution level:
+- Enforces exact normalized image allowlisting (no prefix matching)
 - Prohibits privileged mode
 - Prohibits host namespaces (PID, IPC, Network)
 - Prohibits host devices
 - Prohibits added Linux capabilities
 - Prohibits Docker daemon socket mounts
-- Prohibits arbitrary host bind mounts
+- Prohibits arbitrary host bind mounts and shared workspace volumes
 - Enforces read-only rootfs, tmpfs, capability drops, non-root user, and resource limits
 - Validates workspace path confinement within WORKSPACE_ROOT
 """
@@ -53,6 +54,17 @@ PROHIBITED_HOST_PREFIXES: tuple[str, ...] = (
     "c:\\program files",
     "c:/programdata",
     "c:\\programdata",
+)
+
+PROHIBITED_ENV_VARS: tuple[str, ...] = (
+    "DOCKER_HOST",
+    "DOCKER_AUTH",
+    "DOCKER_CONFIG",
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "SUDO_ASKPASS",
+    "API_KEY",
+    "GITHUB_TOKEN",
 )
 
 DEFAULT_ALLOWED_IMAGES: tuple[str, ...] = (
@@ -159,27 +171,46 @@ class SandboxContainerPayloadValidator:
     ) -> None:
         """Validate Docker Engine API POST /containers/create JSON payload.
 
-        Raises:
-            ContainerSecurityError: If any prohibited setting is detected.
+        Enforces positive allowlisting across all container creation parameters.
+        Raises ContainerSecurityError if any policy constraint is violated.
         """
-        # 1. Image Allowlist
+        # 1. Exact Image Allowlist (No prefix matching)
         valid_images = allowed_images or DEFAULT_ALLOWED_IMAGES
-        image = payload.get("Image", "")
-        if not any(image.startswith(prefix) for prefix in valid_images):
+        valid_set = {img.strip().lower() for img in valid_images}
+        image = str(payload.get("Image", "")).strip().lower()
+        if not image or image not in valid_set:
             raise ContainerSecurityError(
-                f"Container image '{image}' is not in permitted sandbox images: "
-                f"{valid_images}"
+                f"Container image '{payload.get('Image', '')}' is not in permitted "
+                f"sandbox images: {sorted(valid_set)}"
             )
 
-        host_config = payload.get("HostConfig", {}) or {}
+        # 2. Non-root user check
+        user = str(payload.get("User", ""))
+        if user in ("0", "root", "0:0", ""):
+            raise ContainerSecurityError(
+                f"Running container as root user is prohibited. Got User='{user}'."
+            )
 
-        # 2. Privileged Container Prohibition
+        # 3. Environment Variables Inspection
+        env_vars = payload.get("Env", []) or []
+        for env_item in env_vars:
+            key = str(env_item).split("=")[0].strip().upper()
+            if key in PROHIBITED_ENV_VARS:
+                raise ContainerSecurityError(
+                    f"Environment variable '{key}' is prohibited in sandbox containers."
+                )
+
+        host_config = payload.get("HostConfig", {}) or {}
+        if not host_config:
+            raise ContainerSecurityError("HostConfig must be provided and configured.")
+
+        # 4. Privileged Container Prohibition
         if host_config.get("Privileged") is True:
             raise ContainerSecurityError(
                 "Privileged container mode is strictly prohibited."
             )
 
-        # 3. Host Namespace Prohibitions
+        # 5. Host Namespace Prohibitions
         if host_config.get("PidMode", "").lower() == "host":
             raise ContainerSecurityError(
                 "Host PID namespace sharing is strictly prohibited."
@@ -188,36 +219,71 @@ class SandboxContainerPayloadValidator:
             raise ContainerSecurityError(
                 "Host IPC namespace sharing is strictly prohibited."
             )
-        if host_config.get("NetworkMode", "").lower() == "host":
+        net_mode = str(host_config.get("NetworkMode", "none")).lower()
+        if net_mode not in ("none", "bridge"):
             raise ContainerSecurityError(
-                "Host network namespace sharing is strictly prohibited."
+                f"Network mode '{net_mode}' is not permitted (Host network namespace "
+                "sharing is strictly prohibited). Permitted modes: ('none', 'bridge')."
             )
 
-        # 4. Host Device Mapping Prohibition
+        # 6. Host Device Mapping Prohibition
         if host_config.get("Devices"):
             raise ContainerSecurityError("Host device mapping is strictly prohibited.")
 
-        # 5. Linux Capability Addition Prohibition
+        # 7. Linux Capability Addition Prohibition & Mandatory CapDrop
         if host_config.get("CapAdd"):
             raise ContainerSecurityError(
                 "Adding Linux capabilities is strictly prohibited: "
                 f"{host_config.get('CapAdd')}"
             )
+        cap_drop = [str(c).upper() for c in (host_config.get("CapDrop") or [])]
+        if "ALL" not in cap_drop:
+            raise ContainerSecurityError(
+                "Mandatory capability drop 'ALL' (CapDrop: ['ALL']) is required."
+            )
 
-        # 6. Bind Mounts & Volume Mounts Allowlist
-        binds = host_config.get("Binds", []) or []
-        for bind in binds:
-            cls._validate_bind_spec(str(bind))
+        # 8. Mandatory Read-Only Root Filesystem
+        if host_config.get("ReadonlyRootfs") is not True:
+            raise ContainerSecurityError(
+                "Mandatory read-only root filesystem (ReadonlyRootfs: true) "
+                "is required."
+            )
 
-        mounts = host_config.get("Mounts", []) or []
-        for mount in mounts:
-            if isinstance(mount, dict):
-                m_type = mount.get("Type", "")
-                m_source = mount.get("Source", "")
-                if m_type == "bind":
-                    cls._validate_bind_spec(m_source)
+        # 9. Mandatory Resource Limits
+        memory = host_config.get("Memory", 0)
+        pids_limit = host_config.get("PidsLimit", 0)
+        nano_cpus = host_config.get("NanoCpus", 0)
+        cpu_quota = host_config.get("CpuQuota", 0)
+        if not memory or memory <= 0:
+            raise ContainerSecurityError(
+                "Mandatory memory resource limit (Memory > 0) is required."
+            )
+        if (not nano_cpus or nano_cpus <= 0) and (not cpu_quota or cpu_quota <= 0):
+            raise ContainerSecurityError(
+                "Mandatory CPU resource limit (NanoCpus > 0 or CpuQuota > 0) "
+                "is required."
+            )
+        if not pids_limit or pids_limit <= 0:
+            raise ContainerSecurityError(
+                "Mandatory process limit (PidsLimit > 0) is required."
+            )
 
-        # 7. Security Options
+        # 10. Prohibit Container Restarts
+        restart = host_config.get("RestartPolicy", {}) or {}
+        r_name = str(restart.get("Name", "no")).lower()
+        if r_name not in ("no", ""):
+            raise ContainerSecurityError(
+                f"Restart policy '{r_name}' is prohibited. Sandbox containers must "
+                "not restart."
+            )
+
+        # 11. Prohibit VolumesFrom
+        if host_config.get("VolumesFrom"):
+            raise ContainerSecurityError(
+                "VolumesFrom is strictly prohibited in sandbox containers."
+            )
+
+        # 12. Security Options
         sec_opt = host_config.get("SecurityOpt", []) or []
         if (
             "no-new-privileges:true" not in sec_opt
@@ -227,12 +293,29 @@ class SandboxContainerPayloadValidator:
                 "Security option 'no-new-privileges:true' is required."
             )
 
-        # 8. Non-root user check
-        user = str(payload.get("User", ""))
-        if user in ("0", "root", "0:0", ""):
-            raise ContainerSecurityError(
-                f"Running container as root user is prohibited. Got User='{user}'."
-            )
+        # 13. Mounts & Binds Allowlist
+        binds = host_config.get("Binds", []) or []
+        for bind in binds:
+            cls._validate_bind_spec(str(bind))
+
+        mounts = host_config.get("Mounts", []) or []
+        for mount in mounts:
+            if not isinstance(mount, dict):
+                raise ContainerSecurityError(f"Invalid mount specification: {mount}")
+            m_type = str(mount.get("Type", "")).lower()
+            if m_type not in ("volume", "bind", "tmpfs"):
+                raise ContainerSecurityError(
+                    f"Unapproved mount type '{m_type}'. Permitted types: "
+                    "('volume', 'bind', 'tmpfs')."
+                )
+            if m_type == "bind":
+                cls._validate_bind_spec(mount.get("Source", ""))
+            elif m_type == "tmpfs":
+                target = mount.get("Target", "")
+                if target != "/tmp":  # noqa: S108  # nosec B108
+                    raise ContainerSecurityError(
+                        f"Tmpfs mount target must be '/tmp', got '{target}'."
+                    )
 
     @classmethod
     def validate_docker_cli_args(
@@ -275,7 +358,19 @@ class SandboxContainerPayloadValidator:
         if "--cap-add" in args:
             raise ContainerSecurityError("Flag '--cap-add' is strictly prohibited.")
 
-        # 5. Volume binds inspection
+        # 5. Prohibited Restart Flags
+        for arg in args:
+            if (
+                arg.startswith("--restart")
+                and not arg.endswith("=no")
+                and arg != "--restart"
+            ):
+                raise ContainerSecurityError(
+                    f"Restart flag '{arg}' is prohibited. Sandbox containers must "
+                    "not restart."
+                )
+
+        # 6. Volume binds inspection
         for i, arg in enumerate(args):
             if arg in ("-v", "--volume"):
                 if i + 1 < len(args):
@@ -288,7 +383,7 @@ class SandboxContainerPayloadValidator:
             elif arg.startswith("--mount="):
                 cls._validate_bind_spec(arg.split("=", 1)[1])
 
-        # 6. Must contain mandatory security flags
+        # 7. Mandatory security flags
         if "--cap-drop" not in args or "all" not in arg_str:
             raise ContainerSecurityError(
                 "Mandatory capability drop '--cap-drop ALL' is required."
@@ -300,10 +395,26 @@ class SandboxContainerPayloadValidator:
                 "Mandatory flag '--user 10001:10001' is required."
             )
 
-        # 7. Image check if present
+        # 8. Mandatory Resource Limits in CLI args
+        if "--memory" not in args and not any(a.startswith("--memory=") for a in args):
+            raise ContainerSecurityError(
+                "Mandatory memory limit '--memory' is required in CLI arguments."
+            )
+        if "--cpus" not in args and not any(a.startswith("--cpus=") for a in args):
+            raise ContainerSecurityError(
+                "Mandatory CPU limit '--cpus' is required in CLI arguments."
+            )
+        if "--pids-limit" not in args and not any(
+            a.startswith("--pids-limit=") for a in args
+        ):
+            raise ContainerSecurityError(
+                "Mandatory process limit '--pids-limit' is required in CLI arguments."
+            )
+
+        # 9. Exact Image Allowlist Check (No prefix matching)
         valid_images = allowed_images or DEFAULT_ALLOWED_IMAGES
+        valid_set = {img.strip().lower() for img in valid_images}
         image_candidate = None
-        # In `docker run [flags] image [cmd]`, find image argument
         is_run = False
         skip_next = False
         for _i, arg in enumerate(args):
@@ -343,13 +454,13 @@ class SandboxContainerPayloadValidator:
             image_candidate = arg
             break
 
-        if image_candidate and not any(
-            image_candidate.startswith(prefix) for prefix in valid_images
-        ):
-            raise ContainerSecurityError(
-                f"Container image '{image_candidate}' is not in permitted "
-                f"sandbox images: {valid_images}"
-            )
+        if image_candidate:
+            norm_cand = image_candidate.strip().lower()
+            if norm_cand not in valid_set:
+                raise ContainerSecurityError(
+                    f"Container image '{image_candidate}' is not in permitted "
+                    f"sandbox images: {sorted(valid_set)}"
+                )
 
     @classmethod
     def _validate_bind_spec(cls, bind_spec: str) -> None:
@@ -372,6 +483,14 @@ class SandboxContainerPayloadValidator:
         norm_source = source_part.lower().replace("\\", "/")
         norm_source_clean = norm_source.rstrip("/")
 
+        # BLOCKER 2: Prohibit mounting the shared root volume directly!
+        if norm_source_clean == "agentforge-workspaces":
+            raise ContainerSecurityError(
+                "Mounting the shared 'agentforge-workspaces' volume directly is "
+                "prohibited. Use isolated per-execution volumes or dedicated "
+                "workspace subpaths."
+            )
+
         if (
             norm_source_clean in PROHIBITED_HOST_EXACT
             or source_part.lower() in PROHIBITED_HOST_EXACT
@@ -389,9 +508,8 @@ class SandboxContainerPayloadValidator:
                     f"Prohibited host filesystem mount requested: '{bind_spec}'."
                 )
 
-        # If it's a named volume (e.g. agentforge-workspaces), allow it
-        named_vol = getattr(settings, "DOCKER_NAMED_VOLUME", None)
-        if named_vol and source_part == named_vol:
+        # If it's an isolated per-execution named volume, allow it
+        if norm_source_clean.startswith("agentforge-ws-"):
             return
 
         # If it's a host path, verify it is strictly within an authorized workspace root

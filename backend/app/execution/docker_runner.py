@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import httpx
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
@@ -113,8 +114,13 @@ class CLIDockerClient(DockerClientInterface):
     ) -> list[str]:
         """Construct isolated, restricted docker run command arguments."""
         named_volume = getattr(settings, "DOCKER_NAMED_VOLUME", None)
+        per_exec_vol = getattr(settings, "DOCKER_PER_EXECUTION_VOLUMES", True)
         if named_volume:
-            mount_spec = f"{named_volume}:/sandbox/workspace:rw"
+            if per_exec_vol and not str(named_volume).startswith("agentforge-ws-"):
+                exec_vol = f"agentforge-ws-{uuid.uuid4().hex[:12]}"
+                mount_spec = f"{exec_vol}:/sandbox/workspace:rw"
+            else:
+                mount_spec = f"{named_volume}:/sandbox/workspace:rw"
         else:
             mount_spec = f"{workspace_path.resolve()}:/sandbox/workspace:rw"
 
@@ -173,6 +179,14 @@ class CLIDockerClient(DockerClientInterface):
         args = self._build_docker_args(
             image, command, workspace_path, policy, environment
         )
+        vol_to_clean: str | None = None
+        for i, a in enumerate(args):
+            if a in ("-v", "--volume") and i + 1 < len(args):
+                spec = args[i + 1].split(":")[0]
+                if spec.startswith("agentforge-ws-"):
+                    vol_to_clean = spec
+                break
+
         start_time = time.monotonic()
         try:
             proc = subprocess.run(  # noqa: S603  # nosec B603
@@ -217,6 +231,18 @@ class CLIDockerClient(DockerClientInterface):
                 duration_seconds=duration,
                 error=str(exc),
             )
+        finally:
+            if vol_to_clean and self.docker_binary:
+                rm_cmd = [self.docker_binary]
+                if self.docker_host:
+                    rm_cmd.extend(["-H", self.docker_host])
+                rm_cmd.extend(["volume", "rm", "-f", vol_to_clean])
+                try:
+                    subprocess.run(  # noqa: S603  # nosec B603
+                        rm_cmd, capture_output=True, timeout=5, check=False
+                    )
+                except Exception:  # noqa: S110  # nosec B110
+                    pass
 
     async def run_container_async(
         self,
@@ -230,6 +256,14 @@ class CLIDockerClient(DockerClientInterface):
         args = self._build_docker_args(
             image, command, workspace_path, policy, environment
         )
+        vol_to_clean: str | None = None
+        for i, a in enumerate(args):
+            if a in ("-v", "--volume") and i + 1 < len(args):
+                spec = args[i + 1].split(":")[0]
+                if spec.startswith("agentforge-ws-"):
+                    vol_to_clean = spec
+                break
+
         start_time = time.monotonic()
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -265,6 +299,22 @@ class CLIDockerClient(DockerClientInterface):
                 duration_seconds=duration,
                 error=str(exc),
             )
+        finally:
+            if vol_to_clean and self.docker_binary:
+                rm_cmd = [self.docker_binary]
+                if self.docker_host:
+                    rm_cmd.extend(["-H", self.docker_host])
+                rm_cmd.extend(["volume", "rm", "-f", vol_to_clean])
+                try:
+                    proc_rm = await asyncio.create_subprocess_exec(
+                        rm_cmd[0],
+                        *rm_cmd[1:],
+                        stdout=asyncio.subprocess.DEVNULL,
+                        stderr=asyncio.subprocess.DEVNULL,
+                    )
+                    await asyncio.wait_for(proc_rm.wait(), timeout=5.0)
+                except Exception:  # noqa: S110  # nosec B110
+                    pass
 
 
 class MockDockerClient(DockerClientInterface):
@@ -335,6 +385,183 @@ class MockDockerClient(DockerClientInterface):
         return self.run_container(image, command, workspace_path, policy, environment)
 
 
+class BrokerDockerClient(DockerClientInterface):
+    """Executes container commands via the isolated Execution Broker HTTP service."""
+
+    def __init__(
+        self,
+        broker_url: str | None = None,
+        timeout: float = 60.0,
+    ) -> None:
+        self.broker_url = (
+            broker_url
+            or getattr(settings, "EXECUTION_BROKER_URL", None)
+            or os.environ.get("EXECUTION_BROKER_URL")
+        )
+        self.timeout = timeout
+
+    def is_available(self) -> bool:
+        """Check if execution broker is responsive and reports healthy daemon."""
+        if not self.broker_url:
+            return False
+        try:
+            url = f"{self.broker_url.rstrip('/')}/health"
+            resp = httpx.get(url, timeout=3.0)
+            return (
+                resp.status_code == 200 and resp.json().get("docker_available") is True
+            )
+        except Exception:
+            return False
+
+    def _collect_workspace_files(self, workspace_path: Path) -> dict[str, str]:
+        """Collect relative files from workspace directory to send to broker."""
+        files: dict[str, str] = {}
+        if not workspace_path.exists() or not workspace_path.is_dir():
+            return files
+
+        for p in workspace_path.rglob("*"):
+            if p.is_file():
+                try:
+                    rel = p.relative_to(workspace_path).as_posix()
+                    # Skip files larger than 1MB to prevent memory exhaustion
+                    if p.stat().st_size <= 1_000_000:
+                        files[rel] = p.read_text(encoding="utf-8", errors="replace")
+                except Exception:  # noqa: S112  # nosec B112
+                    continue
+        return files
+
+    def run_container(
+        self,
+        image: str,
+        command: list[str],
+        workspace_path: Path,
+        policy: ExecutionPolicy,
+        environment: dict[str, str] | None = None,
+    ) -> DockerExecutionOutput:
+        """Synchronously execute command via execution broker."""
+        if not self.broker_url:
+            return DockerExecutionOutput(
+                exit_code=127,
+                error="EXECUTION_BROKER_URL is not configured.",
+            )
+
+        workspace_files = self._collect_workspace_files(workspace_path)
+        payload = {
+            "image": image,
+            "command": command,
+            "workspace_files": workspace_files,
+            "policy": policy.model_dump(),
+            "environment": environment or {},
+        }
+        url = f"{self.broker_url.rstrip('/')}/v1/execute"
+        start_time = time.monotonic()
+        try:
+            resp = httpx.post(
+                url,
+                json=payload,
+                timeout=float(policy.timeout_seconds + 10),
+            )
+            duration = time.monotonic() - start_time
+            if resp.status_code == 400:
+                detail = resp.json().get("detail", "Request rejected by broker")
+                raise ContainerSecurityError(detail)
+            resp.raise_for_status()
+            data = resp.json()
+            return DockerExecutionOutput(
+                exit_code=data.get("exit_code", 0),
+                stdout=data.get("stdout", ""),
+                stderr=data.get("stderr", ""),
+                duration_seconds=data.get("duration_seconds", duration),
+                timed_out=data.get("timed_out", False),
+                error=data.get("error"),
+            )
+        except ContainerSecurityError:
+            raise
+        except httpx.TimeoutException:
+            duration = time.monotonic() - start_time
+            return DockerExecutionOutput(
+                exit_code=124,
+                duration_seconds=duration,
+                timed_out=True,
+                error=(
+                    f"Container execution timed out after {policy.timeout_seconds}s"
+                ),
+            )
+        except Exception as exc:
+            duration = time.monotonic() - start_time
+            return DockerExecutionOutput(
+                exit_code=1,
+                duration_seconds=duration,
+                error=f"Execution broker communication failed: {exc}",
+            )
+
+    async def run_container_async(
+        self,
+        image: str,
+        command: list[str],
+        workspace_path: Path,
+        policy: ExecutionPolicy,
+        environment: dict[str, str] | None = None,
+    ) -> DockerExecutionOutput:
+        """Asynchronously execute command via execution broker."""
+        if not self.broker_url:
+            return DockerExecutionOutput(
+                exit_code=127,
+                error="EXECUTION_BROKER_URL is not configured.",
+            )
+
+        workspace_files = self._collect_workspace_files(workspace_path)
+        payload = {
+            "image": image,
+            "command": command,
+            "workspace_files": workspace_files,
+            "policy": policy.model_dump(),
+            "environment": environment or {},
+        }
+        url = f"{self.broker_url.rstrip('/')}/v1/execute"
+        start_time = time.monotonic()
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    url,
+                    json=payload,
+                    timeout=float(policy.timeout_seconds + 10),
+                )
+            duration = time.monotonic() - start_time
+            if resp.status_code == 400:
+                detail = resp.json().get("detail", "Request rejected by broker")
+                raise ContainerSecurityError(detail)
+            resp.raise_for_status()
+            data = resp.json()
+            return DockerExecutionOutput(
+                exit_code=data.get("exit_code", 0),
+                stdout=data.get("stdout", ""),
+                stderr=data.get("stderr", ""),
+                duration_seconds=data.get("duration_seconds", duration),
+                timed_out=data.get("timed_out", False),
+                error=data.get("error"),
+            )
+        except ContainerSecurityError:
+            raise
+        except httpx.TimeoutException:
+            duration = time.monotonic() - start_time
+            return DockerExecutionOutput(
+                exit_code=124,
+                duration_seconds=duration,
+                timed_out=True,
+                error=(
+                    f"Container execution timed out after {policy.timeout_seconds}s"
+                ),
+            )
+        except Exception as exc:
+            duration = time.monotonic() - start_time
+            return DockerExecutionOutput(
+                exit_code=1,
+                duration_seconds=duration,
+                error=f"Execution broker communication failed: {exc}",
+            )
+
+
 class DockerRunner:
     """Restricted Docker runner enforcing strict sandboxing and no host fallback."""
 
@@ -344,7 +571,12 @@ class DockerRunner:
         image: str | None = None,
         workspace_root: str | Path | None = None,
     ) -> None:
-        self.client = docker_client if docker_client is not None else CLIDockerClient()
+        if docker_client is not None:
+            self.client = docker_client
+        elif getattr(settings, "EXECUTION_BROKER_URL", None):
+            self.client = BrokerDockerClient(broker_url=settings.EXECUTION_BROKER_URL)
+        else:
+            self.client = CLIDockerClient()
         self.image = image or settings.DOCKER_IMAGE
         self.workspace_root = (
             Path(workspace_root) if workspace_root is not None else None

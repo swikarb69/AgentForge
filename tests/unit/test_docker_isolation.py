@@ -6,7 +6,12 @@ from unittest.mock import patch
 import pytest
 
 from backend.app.core.config import Settings
+from backend.app.execution.broker import (
+    ExecutionBrokerRequest,
+    SandboxExecutionBroker,
+)
 from backend.app.execution.docker_runner import (
+    BrokerDockerClient,
     CLIDockerClient,
     DockerRunner,
     MockDockerClient,
@@ -37,7 +42,10 @@ def _valid_api_payload() -> dict:
             "NetworkMode": "none",
             "PidMode": "",
             "IpcMode": "",
-            "Binds": [],
+            "Memory": 536870912,
+            "NanoCpus": 1000000000,
+            "PidsLimit": 64,
+            "Binds": ["agentforge-ws-exec-001:/sandbox/workspace:rw"],
         },
     }
 
@@ -183,7 +191,7 @@ def test_api_payload_rejects_root_user(bad_user: str) -> None:
 
 
 def _valid_cli_args(
-    mount_spec: str = "agentforge-workspaces:/sandbox/workspace:rw",
+    mount_spec: str = "agentforge-ws-exec-001:/sandbox/workspace:rw",
 ) -> list[str]:
     """Return a valid baseline CLI argument list."""
     return [
@@ -366,7 +374,7 @@ def test_cli_docker_client_builds_compliant_command(tmp_path: Path) -> None:
 
 
 def test_cli_docker_client_uses_named_volume_when_configured(tmp_path: Path) -> None:
-    """Verify named volume configuration replaces host bind mount."""
+    """Verify named volume configuration generates isolated per-execution volume."""
     client = CLIDockerClient(docker_binary="docker")
     ws_dir = tmp_path / "ws_sub"
     ws_dir.mkdir()
@@ -374,7 +382,7 @@ def test_cli_docker_client_uses_named_volume_when_configured(tmp_path: Path) -> 
 
     with patch(
         "backend.app.execution.docker_runner.settings.DOCKER_NAMED_VOLUME",
-        "agentforge-workspaces",
+        "agentforge-ws",
     ):
         args = client._build_docker_args(
             image="agentforge-sandbox:0.11.0",
@@ -386,7 +394,9 @@ def test_cli_docker_client_uses_named_volume_when_configured(tmp_path: Path) -> 
 
     assert "-v" in args
     vol_idx = args.index("-v") + 1
-    assert args[vol_idx] == "agentforge-workspaces:/sandbox/workspace:rw"
+    mount_str = args[vol_idx]
+    assert mount_str.startswith("agentforge-ws-")
+    assert mount_str.endswith(":/sandbox/workspace:rw")
 
 
 def test_docker_runner_rejects_when_daemon_unavailable(tmp_path: Path) -> None:
@@ -442,3 +452,212 @@ def test_production_config_rejects_disabled_gatekeeper() -> None:
         "DOCKER_CONTAINER_GATEKEEPER_ENFORCED cannot be disabled in production" in err
         for err in errors
     )
+
+
+# ---------------------------------------------------------------------------
+# 5. Exact Image Matching & Hardened Gatekeeper Validation Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "prefix_bypass_image",
+    [
+        "agentforge-sandbox:malicious",
+        "agentforge-sandbox-evil:latest",
+        "agentforge-sandbox:latest-fake",
+        "agentforge-sandbox:0.11.0-compromised",
+    ],
+)
+def test_gatekeeper_rejects_prefix_image_bypass(prefix_bypass_image: str) -> None:
+    """Verify exact normalized image matching rejects prefix spoofing."""
+    payload = _valid_api_payload()
+    payload["Image"] = prefix_bypass_image
+    with pytest.raises(ContainerSecurityError, match="not in permitted sandbox images"):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+def test_gatekeeper_rejects_missing_cap_drop_in_payload() -> None:
+    """Verify missing CapDrop: ['ALL'] is rejected."""
+    payload = _valid_api_payload()
+    payload["HostConfig"]["CapDrop"] = ["MKNOD"]
+    with pytest.raises(ContainerSecurityError, match="Mandatory capability drop 'ALL'"):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+def test_gatekeeper_rejects_missing_readonly_rootfs_in_payload() -> None:
+    """Verify missing ReadonlyRootfs: true is rejected."""
+    payload = _valid_api_payload()
+    payload["HostConfig"]["ReadonlyRootfs"] = False
+    with pytest.raises(ContainerSecurityError, match="Mandatory read-only root"):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+@pytest.mark.parametrize(
+    ("limit_key", "invalid_val", "match_str"),
+    [
+        ("Memory", 0, "Mandatory memory resource limit"),
+        ("NanoCpus", 0, "Mandatory CPU resource limit"),
+        ("PidsLimit", 0, "Mandatory process limit"),
+    ],
+)
+def test_gatekeeper_rejects_missing_resource_limits(
+    limit_key: str, invalid_val: int, match_str: str
+) -> None:
+    """Verify missing or zero resource limits are rejected."""
+    payload = _valid_api_payload()
+    payload["HostConfig"][limit_key] = invalid_val
+    if limit_key == "NanoCpus":
+        payload["HostConfig"]["CpuQuota"] = 0
+    with pytest.raises(ContainerSecurityError, match=match_str):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+@pytest.mark.parametrize(
+    "prohibited_env",
+    [
+        "DOCKER_HOST=tcp://evil:2375",
+        "DOCKER_AUTH=secret",
+        "LD_PRELOAD=/evil.so",
+        "LD_LIBRARY_PATH=/evil/lib",
+        "SUDO_ASKPASS=/bin/sh",
+        "API_KEY=leak",
+        "GITHUB_TOKEN=leak",
+    ],
+)
+def test_gatekeeper_rejects_prohibited_env_vars(prohibited_env: str) -> None:
+    """Verify dangerous environment variables are rejected."""
+    payload = _valid_api_payload()
+    payload["Env"] = [prohibited_env]
+    with pytest.raises(ContainerSecurityError, match="is prohibited in sandbox"):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+def test_gatekeeper_rejects_restart_policy() -> None:
+    """Verify container restart policies are prohibited."""
+    payload = _valid_api_payload()
+    payload["HostConfig"]["RestartPolicy"] = {"Name": "always"}
+    with pytest.raises(
+        ContainerSecurityError, match="Restart policy 'always' is prohibited"
+    ):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+def test_gatekeeper_rejects_volumes_from() -> None:
+    """Verify VolumesFrom is strictly prohibited."""
+    payload = _valid_api_payload()
+    payload["HostConfig"]["VolumesFrom"] = ["other-container"]
+    with pytest.raises(
+        ContainerSecurityError, match="VolumesFrom is strictly prohibited"
+    ):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+def test_gatekeeper_rejects_shared_root_volume_directly() -> None:
+    """Verify mounting the shared agentforge-workspaces volume is prohibited."""
+    payload = _valid_api_payload()
+    payload["HostConfig"]["Binds"] = ["agentforge-workspaces:/sandbox/workspace:rw"]
+    with pytest.raises(
+        ContainerSecurityError,
+        match=(
+            "Mounting the shared 'agentforge-workspaces' volume directly is prohibited"
+        ),
+    ):
+        SandboxContainerPayloadValidator.validate_docker_api_payload(payload)
+
+
+# ---------------------------------------------------------------------------
+# 6. Dedicated Execution Broker & Broker Client Tests
+# ---------------------------------------------------------------------------
+
+
+def test_execution_broker_health() -> None:
+    """Verify SandboxExecutionBroker health reflects underlying Docker daemon."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(docker_client=mock_cli)  # type: ignore[arg-type]
+    assert broker.is_healthy() is True
+
+    mock_cli_down = MockDockerClient(available=False)
+    broker_down = SandboxExecutionBroker(docker_client=mock_cli_down)  # type: ignore[arg-type]
+    assert broker_down.is_healthy() is False
+
+
+def test_execution_broker_fails_closed_when_docker_unavailable() -> None:
+    """Verify broker fails closed without host fallback when Docker is down."""
+    mock_cli = MockDockerClient(available=False)
+    broker = SandboxExecutionBroker(docker_client=mock_cli)  # type: ignore[arg-type]
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        image="agentforge-sandbox:latest",
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.FAILED
+    assert res.exit_code == 127
+    assert any(
+        "Host execution fallback is strictly prohibited" in err for err in res.errors
+    )
+
+
+def test_execution_broker_rejects_path_traversal_files(tmp_path: Path) -> None:
+    """Verify broker rejects files attempting to escape per-execution workspace."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        workspace_files={"../escape.txt": "evil content"},
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any(
+        "traversal" in err.lower() or "escapes" in err.lower() for err in res.errors
+    )
+
+
+def test_execution_broker_executes_and_cleans_up_workspace(tmp_path: Path) -> None:
+    """Verify broker creates isolated workspace, executes, and cleans up on exit."""
+    mock_cli = MockDockerClient(
+        available=True,
+        simulated_exit_code=0,
+        simulated_stdout="3 passed in 0.05s",
+    )
+    ws_base = tmp_path / "broker_ws"
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=ws_base,
+    )
+    exec_id = "test-exec-cleanup-01"
+    req = ExecutionBrokerRequest(
+        execution_id=exec_id,
+        command=["pytest", "-q"],
+        workspace_files={"test_app.py": "def test_ok(): assert True\n"},
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.COMPLETED
+    assert res.exit_code == 0
+    assert "3 passed" in res.stdout
+    # Verify per-execution workspace was thoroughly cleaned up
+    exec_ws_dir = ws_base / f"ws-{exec_id}"
+    assert not exec_ws_dir.exists()
+
+
+def test_broker_docker_client_is_available() -> None:
+    """Verify BrokerDockerClient returns False when unconfigured or unreachable."""
+    client_empty = BrokerDockerClient(broker_url=None)
+    assert client_empty.is_available() is False
+
+    client_dead = BrokerDockerClient(broker_url="http://127.0.0.1:59999")
+    assert client_dead.is_available() is False
+
+
+def test_docker_runner_uses_broker_client_when_configured() -> None:
+    """Verify DockerRunner defaults to BrokerDockerClient when configured."""
+    with patch(
+        "backend.app.execution.docker_runner.settings.EXECUTION_BROKER_URL",
+        "http://execution-broker:8001",
+    ):
+        runner = DockerRunner()
+        assert isinstance(runner.client, BrokerDockerClient)
+        assert runner.client.broker_url == "http://execution-broker:8001"

@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     ]
     DOCKER_CONTAINER_GATEKEEPER_ENFORCED: bool = True
     DOCKER_NAMED_VOLUME: str | None = None
+    DOCKER_PER_EXECUTION_VOLUMES: bool = True
+    EXECUTION_BROKER_URL: str | None = None
     SANDBOX_ALLOWED_IMAGES: list[str] = [
         "agentforge-sandbox:latest",
         "agentforge-sandbox:0.11.0",

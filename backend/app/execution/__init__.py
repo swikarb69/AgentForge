@@ -1,6 +1,7 @@
 """AgentForge execution and verification subsystem."""
 
 from backend.app.execution.docker_runner import (
+    BrokerDockerClient,
     CLIDockerClient,
     DockerClientInterface,
     DockerExecutionOutput,
@@ -38,6 +39,7 @@ from backend.app.execution.verification import VerificationEngine
 from backend.app.execution.workspace import WorkspaceManager
 
 __all__ = [
+    "BrokerDockerClient",
     "CLIDockerClient",
     "ContainerSecurityError",
     "CreateExecutionRequest",

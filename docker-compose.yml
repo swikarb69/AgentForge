@@ -1,7 +1,7 @@
 services:
   # Hardened Docker Socket Proxy Sidecar
-  # Mediates container execution for the sandbox without exposing raw host Docker socket.
-  # Restricts API access strictly to isolated container lifecycle operations.
+  # Mediates container execution strictly for the dedicated execution broker.
+  # Isolated on broker-internal network; inaccessible to the main application.
   docker-proxy:
     image: tecnativa/docker-socket-proxy:0.1.3
     container_name: agentforge-docker-proxy
@@ -25,12 +25,44 @@ services:
       - SWARM=0        # Disallow swarm
       - SYSTEM=0       # Disallow system modification
       - TASKS=0        # Disallow swarm tasks
-      - VOLUMES=0      # Disallow creating host volume mounts
+      - VOLUMES=1      # Allow broker to manage per-execution isolated volumes
       - SECRETS=0      # Disallow secrets access
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
+      - broker-internal
+    security_opt:
+      - no-new-privileges:true
+
+  # Dedicated Sandbox Execution Broker
+  # Mediates all container execution requests with zero-trust validation.
+  # Owns the Docker connection; creates isolated per-execution workspaces and volumes.
+  execution-broker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["uvicorn", "backend.app.execution.broker:broker_app", "--host", "0.0.0.0", "--port", "8001"]
+    container_name: agentforge-execution-broker
+    restart: unless-stopped
+    environment:
+      - ENVIRONMENT=production
+      - DOCKER_HOST=tcp://docker-proxy:2375
+      - DOCKER_CONTAINER_GATEKEEPER_ENFORCED=true
+      - DOCKER_PER_EXECUTION_VOLUMES=true
+      - DOCKER_NAMED_VOLUME=agentforge-ws
+    volumes:
+      - agentforge-workspaces:/broker-workspaces
+    depends_on:
+      - docker-proxy
+    networks:
+      - broker-internal
       - agentforge-internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
     security_opt:
       - no-new-privileges:true
 
@@ -51,9 +83,9 @@ services:
       - API_KEY_AUTH_ENABLED=true
       - API_KEY=${API_KEY:-}
       - CORS_ORIGINS=["http://localhost:3000"]
-      - DOCKER_HOST=tcp://docker-proxy:2375
+      - EXECUTION_BROKER_URL=http://execution-broker:8001
       - DOCKER_CONTAINER_GATEKEEPER_ENFORCED=true
-      - DOCKER_NAMED_VOLUME=agentforge-workspaces
+      - DOCKER_PER_EXECUTION_VOLUMES=true
       - WORKSPACE_ROOT=/app/agentforge-workspaces
       - AI_PROVIDER=${AI_PROVIDER:-mock}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -64,7 +96,7 @@ services:
       - agentforge-artifacts:/app/agentforge-artifacts
       - agentforge-workspaces:/app/agentforge-workspaces
     depends_on:
-      - docker-proxy
+      - execution-broker
     networks:
       - agentforge-internal
       - default
@@ -86,6 +118,9 @@ services:
 networks:
   agentforge-internal:
     name: agentforge-internal
+    internal: true
+  broker-internal:
+    name: broker-internal
     internal: true
 
 volumes:
