@@ -104,6 +104,18 @@ jobs:
           set -eo pipefail
           pytest --ignore=tests/integration/test_docker_runtime_isolation.py --cov=backend/app --cov-report=term-missing --cov-fail-under=80 -ra --tb=short 2>&1 | tee pytest_output.txt
 
+      - name: Publish Pytest Failure Summary
+        if: always()
+        run: |
+          if [ -f pytest_output.txt ]; then
+            echo "### Pytest Summary & Failures" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            grep -E "(FAILED|ERROR|=== FAILURES ===)" -A 10 pytest_output.txt | tail -n 80 >> $GITHUB_STEP_SUMMARY || tail -n 60 pytest_output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "=== PYTEST FAILURES (STDOUT) ==="
+            grep -E "(FAILED|ERROR)" pytest_output.txt || true
+          fi
+
       - name: Upload Test Report
         if: always()
         uses: actions/upload-artifact@v4

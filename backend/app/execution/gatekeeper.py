@@ -139,19 +139,32 @@ class SandboxContainerPayloadValidator:
 
         # Target must be strictly inside root, and not root itself
         try:
-            if not target.is_relative_to(root) or target == root:
+            is_inside = target.is_relative_to(root)
+        except ValueError:
+            is_inside = False
+
+        if target == root:
+            raise WorkspaceSecurityError(
+                f"Workspace path '{target}' is not contained within authorized "
+                f"workspace root '{root}'."
+            )
+
+        if not is_inside:
+            raw_target = Path(workspace_path)
+            if raw_target.is_symlink() or any(
+                p.is_symlink() for p in raw_target.parents
+            ):
                 raise WorkspaceSecurityError(
-                    f"Workspace path '{target}' is not contained within authorized "
-                    f"workspace root '{root}'."
+                    f"Symlink escape detected: '{raw_target}' resolves outside "
+                    f"authorized workspace root '{root}' to '{target}'."
                 )
-        except ValueError as exc:
             raise WorkspaceSecurityError(
                 f"Workspace path '{target}' is outside authorized root '{root}'."
-            ) from exc
+            )
 
         # Check symlink escapes in path and all parent components down to root
-        curr = target
-        while curr != root:
+        curr = Path(workspace_path)
+        while curr != root and curr != curr.parent:
             if curr.is_symlink():
                 resolved_sym = curr.resolve()
                 if not resolved_sym.is_relative_to(root):
