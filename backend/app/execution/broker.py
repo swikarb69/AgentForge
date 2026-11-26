@@ -183,7 +183,12 @@ class SandboxExecutionBroker:
             or (Path(tempfile.gettempdir()) / "agentforge_broker_ws")
         )
         self.workspace_base_dir = Path(configured_root).resolve()
-        self.workspace_base_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.workspace_base_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            fallback = Path(tempfile.gettempdir()) / "agentforge_broker_ws"
+            self.workspace_base_dir = fallback.resolve()
+            self.workspace_base_dir.mkdir(parents=True, exist_ok=True)
 
     def is_healthy(self) -> bool:
         """Check if broker can reach the underlying Docker daemon."""

@@ -47,7 +47,7 @@ COPY --chown=agentforge:agentforge backend/ ./backend/
 COPY --chown=agentforge:agentforge pyproject.toml README.md ./
 
 # Ensure runtime directories exist and have proper ownership
-RUN mkdir -p /app/agentforge-storage /app/agentforge-artifacts /app/agentforge-workspaces && \
+RUN mkdir -p /app/agentforge-storage /app/agentforge-artifacts /app/agentforge-workspaces /app/agentforge-broker-workspaces && \
     chown -R agentforge:agentforge /app
 
 USER agentforge
