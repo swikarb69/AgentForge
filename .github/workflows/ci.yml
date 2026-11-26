@@ -184,6 +184,12 @@ jobs:
           timeout 60 bash -c 'until docker compose ps | grep -q "agentforge-execution-broker.*healthy"; do sleep 2; done'
           docker compose ps
 
+      - name: Prepare Container for Test Execution
+        run: |
+          docker compose exec -u 0 -T agentforge pip install --no-cache-dir pytest pytest-asyncio
+          docker compose cp tests agentforge:/app/tests
+          docker compose exec -u 0 -T agentforge chown -R agentforge:agentforge /app/tests
+
       - name: Verify Live Compose Broker Architecture & Security Boundaries
         run: |
           set -eo pipefail

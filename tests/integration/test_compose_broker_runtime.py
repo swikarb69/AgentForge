@@ -52,11 +52,16 @@ if not BROKER_URL:
 
 
 @pytest.fixture
-def test_workspace_dir(tmp_path: Path) -> Path:
+def test_workspace_dir() -> Path:
     """Create an isolated test workspace directory within authorized root."""
-    ws = tmp_path / f"compose-ws-{uuid.uuid4().hex[:8]}"
+    base_root = Path(settings.WORKSPACE_ROOT).resolve()
+    base_root.mkdir(parents=True, exist_ok=True)
+    ws = base_root / f"compose-ws-{uuid.uuid4().hex[:8]}"
     ws.mkdir(parents=True, exist_ok=True)
-    return ws
+    try:
+        yield ws
+    finally:
+        shutil.rmtree(ws, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
@@ -133,44 +138,50 @@ def test_broker_workspace_file_transfer(test_workspace_dir: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_broker_concurrent_workspace_isolation(tmp_path: Path) -> None:
+def test_broker_concurrent_workspace_isolation() -> None:
     """Verify execution 2 cannot access files from execution 1's workspace."""
-    ws1 = tmp_path / "ws_tenant_1"
+    base_root = Path(settings.WORKSPACE_ROOT).resolve()
+    base_root.mkdir(parents=True, exist_ok=True)
+    ws1 = base_root / f"ws_tenant_1_{uuid.uuid4().hex[:6]}"
     ws1.mkdir(parents=True, exist_ok=True)
     (ws1 / "tenant1_private.txt").write_text("CONFIDENTIAL_TENANT_1")
 
-    ws2 = tmp_path / "ws_tenant_2"
+    ws2 = base_root / f"ws_tenant_2_{uuid.uuid4().hex[:6]}"
     ws2.mkdir(parents=True, exist_ok=True)
     (ws2 / "tenant2_private.txt").write_text("CONFIDENTIAL_TENANT_2")
 
-    runner = DockerRunner(workspace_root=tmp_path)
+    try:
+        runner = DockerRunner(workspace_root=base_root)
 
-    # Execute request 1
-    res1 = runner.execute(
-        workspace_path=ws1,
-        command=[
-            "python3",
-            "-c",
-            "print('T1=' + open('tenant1_private.txt').read().strip())",
-        ],
-    )
-    assert res1.status == ExecutionStatus.COMPLETED
-    assert "T1=CONFIDENTIAL_TENANT_1" in res1.stdout
+        # Execute request 1
+        res1 = runner.execute(
+            workspace_path=ws1,
+            command=[
+                "python3",
+                "-c",
+                "print('T1=' + open('tenant1_private.txt').read().strip())",
+            ],
+        )
+        assert res1.status == ExecutionStatus.COMPLETED
+        assert "T1=CONFIDENTIAL_TENANT_1" in res1.stdout
 
-    # Execute request 2 with check that tenant 1's file does not exist
-    res2 = runner.execute(
-        workspace_path=ws2,
-        command=[
-            "python3",
-            "-c",
-            "import os; "
-            "print('T1_LEAK=' + str(os.path.exists('tenant1_private.txt'))); "
-            "print('T2=' + open('tenant2_private.txt').read().strip())",
-        ],
-    )
-    assert res2.status == ExecutionStatus.COMPLETED
-    assert "T1_LEAK=False" in res2.stdout
-    assert "T2=CONFIDENTIAL_TENANT_2" in res2.stdout
+        # Execute request 2 with check that tenant 1's file does not exist
+        res2 = runner.execute(
+            workspace_path=ws2,
+            command=[
+                "python3",
+                "-c",
+                "import os; "
+                "print('T1_LEAK=' + str(os.path.exists('tenant1_private.txt'))); "
+                "print('T2=' + open('tenant2_private.txt').read().strip())",
+            ],
+        )
+        assert res2.status == ExecutionStatus.COMPLETED
+        assert "T1_LEAK=False" in res2.stdout
+        assert "T2=CONFIDENTIAL_TENANT_2" in res2.stdout
+    finally:
+        shutil.rmtree(ws1, ignore_errors=True)
+        shutil.rmtree(ws2, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
@@ -255,13 +266,15 @@ def test_broker_cleanup_after_execution(test_workspace_dir: Path) -> None:
 
 def test_broker_stopped_causes_fail_closed(test_workspace_dir: Path) -> None:
     """Verify stopping/unreachable broker fails closed without host fallback."""
-    unreachable_client = BrokerDockerClient(broker_url="http://127.0.0.1:59997")
-    assert unreachable_client.is_available() is False
+    runner = DockerRunner(workspace_root=test_workspace_dir.parent)
+    if runner.client.is_available():
+        unreachable_client = BrokerDockerClient(broker_url="http://127.0.0.1:59997")
+        runner = DockerRunner(
+            docker_client=unreachable_client,
+            workspace_root=test_workspace_dir.parent,
+        )
 
-    runner = DockerRunner(
-        docker_client=unreachable_client,
-        workspace_root=test_workspace_dir.parent,
-    )
+    assert runner.client.is_available() is False
     result = runner.execute(
         workspace_path=test_workspace_dir,
         command=["python3", "-c", "print('should not run on host')"],
