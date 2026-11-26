@@ -68,6 +68,8 @@ class Settings(BaseSettings):
     DOCKER_NAMED_VOLUME: str | None = None
     DOCKER_PER_EXECUTION_VOLUMES: bool = True
     EXECUTION_BROKER_URL: str | None = None
+    EXECUTION_BROKER_AUTH_TOKEN: SecretStr | None = None
+    EXECUTION_BROKER_WORKSPACE_ROOT: str | None = None
     SANDBOX_ALLOWED_IMAGES: list[str] = [
         "agentforge-sandbox:latest",
         "agentforge-sandbox:0.11.0",

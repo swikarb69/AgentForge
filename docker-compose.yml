@@ -50,8 +50,8 @@ services:
       - DOCKER_CONTAINER_GATEKEEPER_ENFORCED=true
       - DOCKER_PER_EXECUTION_VOLUMES=true
       - DOCKER_NAMED_VOLUME=agentforge-ws
-    volumes:
-      - agentforge-workspaces:/broker-workspaces
+      - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN:-agentforge-broker-internal-secret-token}
+      - EXECUTION_BROKER_WORKSPACE_ROOT=/broker-workspaces
     depends_on:
       - docker-proxy
     networks:
@@ -84,6 +84,7 @@ services:
       - API_KEY=${API_KEY:-}
       - CORS_ORIGINS=["http://localhost:3000"]
       - EXECUTION_BROKER_URL=http://execution-broker:8001
+      - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN:-agentforge-broker-internal-secret-token}
       - DOCKER_CONTAINER_GATEKEEPER_ENFORCED=true
       - DOCKER_PER_EXECUTION_VOLUMES=true
       - WORKSPACE_ROOT=/app/agentforge-workspaces

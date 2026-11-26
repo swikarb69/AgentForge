@@ -65,6 +65,10 @@ PROHIBITED_ENV_VARS: tuple[str, ...] = (
     "SUDO_ASKPASS",
     "API_KEY",
     "GITHUB_TOKEN",
+    "GEMINI_API_KEY",
+    "OPENAI_API_KEY",
+    "EXECUTION_BROKER_AUTH_TOKEN",
+    "BROKER_AUTH_TOKEN",
 )
 
 DEFAULT_ALLOWED_IMAGES: tuple[str, ...] = (

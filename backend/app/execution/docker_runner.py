@@ -187,15 +187,97 @@ class CLIDockerClient(DockerClientInterface):
                     vol_to_clean = spec
                 break
 
+        container_name = (
+            f"agentforge-sbx-{vol_to_clean.replace('agentforge-ws-', '')}"
+            if vol_to_clean
+            else None
+        )
         start_time = time.monotonic()
         try:
-            proc = subprocess.run(  # noqa: S603  # nosec B603
-                args,
-                capture_output=True,
-                text=True,
-                timeout=policy.timeout_seconds,
-                check=False,
-            )
+            if vol_to_clean and container_name and self.docker_binary:
+                # 1. Create isolated named volume
+                v_cmd = [self.docker_binary]
+                if self.docker_host:
+                    v_cmd.extend(["-H", self.docker_host])
+                v_cmd.extend(["volume", "create", vol_to_clean])
+                subprocess.run(  # noqa: S603  # nosec B603
+                    v_cmd, capture_output=True, timeout=5, check=False
+                )
+
+                # 2. Create container (not yet started)
+                create_args = list(args)
+                run_idx = create_args.index("run")
+                create_args[run_idx] = "create"
+                if "--rm" in create_args:
+                    create_args.remove("--rm")
+                create_args.insert(run_idx + 1, "--name")
+                create_args.insert(run_idx + 2, container_name)
+
+                c_proc = subprocess.run(  # noqa: S603  # nosec B603
+                    create_args,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+                if c_proc.returncode != 0:
+                    duration = time.monotonic() - start_time
+                    return DockerExecutionOutput(
+                        exit_code=1,
+                        duration_seconds=duration,
+                        error=f"Container creation failed: {c_proc.stderr}",
+                    )
+
+                # 3. Populate container volume from workspace_path
+                if workspace_path.exists() and workspace_path.is_dir():
+                    try:
+                        has_entries = any(workspace_path.iterdir())
+                    except OSError:
+                        has_entries = False
+                    if has_entries:
+                        cp_cmd = [self.docker_binary]
+                        if self.docker_host:
+                            cp_cmd.extend(["-H", self.docker_host])
+                        src_spec = str(workspace_path).rstrip("/\\") + "/."
+                        cp_cmd.extend(
+                            ["cp", src_spec, f"{container_name}:/sandbox/workspace/"]
+                        )
+                        cp_proc = subprocess.run(  # noqa: S603  # nosec B603
+                            cp_cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=15,
+                            check=False,
+                        )
+                        if cp_proc.returncode != 0:
+                            duration = time.monotonic() - start_time
+                            return DockerExecutionOutput(
+                                exit_code=1,
+                                duration_seconds=duration,
+                                error=f"Workspace transfer failed: {cp_proc.stderr}",
+                            )
+
+                # 4. Start container and attach
+                start_cmd = [self.docker_binary]
+                if self.docker_host:
+                    start_cmd.extend(["-H", self.docker_host])
+                start_cmd.extend(["start", "-a", container_name])
+                proc = subprocess.run(  # noqa: S603  # nosec B603
+                    start_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=policy.timeout_seconds,
+                    check=False,
+                )
+            else:
+                proc = subprocess.run(  # noqa: S603  # nosec B603
+                    args,
+                    capture_output=True,
+                    text=True,
+                    timeout=policy.timeout_seconds,
+                    check=False,
+                )
+
             duration = time.monotonic() - start_time
             return DockerExecutionOutput(
                 exit_code=proc.returncode,
@@ -232,17 +314,29 @@ class CLIDockerClient(DockerClientInterface):
                 error=str(exc),
             )
         finally:
-            if vol_to_clean and self.docker_binary:
-                rm_cmd = [self.docker_binary]
-                if self.docker_host:
-                    rm_cmd.extend(["-H", self.docker_host])
-                rm_cmd.extend(["volume", "rm", "-f", vol_to_clean])
-                try:
-                    subprocess.run(  # noqa: S603  # nosec B603
-                        rm_cmd, capture_output=True, timeout=5, check=False
-                    )
-                except Exception:  # noqa: S110  # nosec B110
-                    pass
+            if self.docker_binary:
+                if container_name:
+                    rm_c = [self.docker_binary]
+                    if self.docker_host:
+                        rm_c.extend(["-H", self.docker_host])
+                    rm_c.extend(["rm", "-f", container_name])
+                    try:
+                        subprocess.run(  # noqa: S603  # nosec B603
+                            rm_c, capture_output=True, timeout=5, check=False
+                        )
+                    except Exception:  # noqa: S110  # nosec B110
+                        pass
+                if vol_to_clean:
+                    rm_v = [self.docker_binary]
+                    if self.docker_host:
+                        rm_v.extend(["-H", self.docker_host])
+                    rm_v.extend(["volume", "rm", "-f", vol_to_clean])
+                    try:
+                        subprocess.run(  # noqa: S603  # nosec B603
+                            rm_v, capture_output=True, timeout=5, check=False
+                        )
+                    except Exception:  # noqa: S110  # nosec B110
+                        pass
 
     async def run_container_async(
         self,
@@ -264,18 +358,113 @@ class CLIDockerClient(DockerClientInterface):
                     vol_to_clean = spec
                 break
 
+        container_name = (
+            f"agentforge-sbx-{vol_to_clean.replace('agentforge-ws-', '')}"
+            if vol_to_clean
+            else None
+        )
         start_time = time.monotonic()
         try:
-            proc = await asyncio.create_subprocess_exec(
-                args[0],
-                *args[1:],
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(),
-                timeout=float(policy.timeout_seconds),
-            )
+            if vol_to_clean and container_name and self.docker_binary:
+                # 1. Create isolated named volume
+                v_cmd = [self.docker_binary]
+                if self.docker_host:
+                    v_cmd.extend(["-H", self.docker_host])
+                v_cmd.extend(["volume", "create", vol_to_clean])
+                proc_v = await asyncio.create_subprocess_exec(
+                    v_cmd[0],
+                    *v_cmd[1:],
+                    stdout=asyncio.subprocess.DEVNULL,
+                    stderr=asyncio.subprocess.DEVNULL,
+                )
+                await asyncio.wait_for(proc_v.wait(), timeout=5.0)
+
+                # 2. Create container
+                create_args = list(args)
+                run_idx = create_args.index("run")
+                create_args[run_idx] = "create"
+                if "--rm" in create_args:
+                    create_args.remove("--rm")
+                create_args.insert(run_idx + 1, "--name")
+                create_args.insert(run_idx + 2, container_name)
+
+                proc_c = await asyncio.create_subprocess_exec(
+                    create_args[0],
+                    *create_args[1:],
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout_c, stderr_c = await asyncio.wait_for(
+                    proc_c.communicate(), timeout=10.0
+                )
+                if proc_c.returncode != 0:
+                    duration = time.monotonic() - start_time
+                    err_c = stderr_c.decode(errors="replace")
+                    return DockerExecutionOutput(
+                        exit_code=1,
+                        duration_seconds=duration,
+                        error=f"Container creation failed: {err_c}",
+                    )
+
+                # 3. Populate container volume from workspace_path
+                if workspace_path.exists() and workspace_path.is_dir():
+                    try:
+                        has_entries = any(workspace_path.iterdir())
+                    except OSError:
+                        has_entries = False
+                    if has_entries:
+                        cp_cmd = [self.docker_binary]
+                        if self.docker_host:
+                            cp_cmd.extend(["-H", self.docker_host])
+                        src_spec = str(workspace_path).rstrip("/\\") + "/."
+                        cp_cmd.extend(
+                            ["cp", src_spec, f"{container_name}:/sandbox/workspace/"]
+                        )
+                        proc_cp = await asyncio.create_subprocess_exec(
+                            cp_cmd[0],
+                            *cp_cmd[1:],
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        stdout_cp, stderr_cp = await asyncio.wait_for(
+                            proc_cp.communicate(), timeout=15.0
+                        )
+                        if proc_cp.returncode != 0:
+                            duration = time.monotonic() - start_time
+                            err_cp = stderr_cp.decode(errors="replace")
+                            return DockerExecutionOutput(
+                                exit_code=1,
+                                duration_seconds=duration,
+                                error=f"Workspace transfer failed: {err_cp}",
+                            )
+
+                # 4. Start container and attach
+                start_cmd = [self.docker_binary]
+                if self.docker_host:
+                    start_cmd.extend(["-H", self.docker_host])
+                start_cmd.extend(["start", "-a", container_name])
+                proc = await asyncio.create_subprocess_exec(
+                    start_cmd[0],
+                    *start_cmd[1:],
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=float(policy.timeout_seconds),
+                )
+            else:
+                proc = await asyncio.create_subprocess_exec(
+                    args[0],
+                    *args[1:],
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout_bytes, stderr_bytes = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=float(policy.timeout_seconds),
+                )
+
             duration = time.monotonic() - start_time
             return DockerExecutionOutput(
                 exit_code=proc.returncode if proc.returncode is not None else 1,
@@ -300,21 +489,37 @@ class CLIDockerClient(DockerClientInterface):
                 error=str(exc),
             )
         finally:
-            if vol_to_clean and self.docker_binary:
-                rm_cmd = [self.docker_binary]
-                if self.docker_host:
-                    rm_cmd.extend(["-H", self.docker_host])
-                rm_cmd.extend(["volume", "rm", "-f", vol_to_clean])
-                try:
-                    proc_rm = await asyncio.create_subprocess_exec(
-                        rm_cmd[0],
-                        *rm_cmd[1:],
-                        stdout=asyncio.subprocess.DEVNULL,
-                        stderr=asyncio.subprocess.DEVNULL,
-                    )
-                    await asyncio.wait_for(proc_rm.wait(), timeout=5.0)
-                except Exception:  # noqa: S110  # nosec B110
-                    pass
+            if self.docker_binary:
+                if container_name:
+                    rm_c = [self.docker_binary]
+                    if self.docker_host:
+                        rm_c.extend(["-H", self.docker_host])
+                    rm_c.extend(["rm", "-f", container_name])
+                    try:
+                        proc_rm = await asyncio.create_subprocess_exec(
+                            rm_c[0],
+                            *rm_c[1:],
+                            stdout=asyncio.subprocess.DEVNULL,
+                            stderr=asyncio.subprocess.DEVNULL,
+                        )
+                        await asyncio.wait_for(proc_rm.wait(), timeout=5.0)
+                    except Exception:  # noqa: S110  # nosec B110
+                        pass
+                if vol_to_clean:
+                    rm_v = [self.docker_binary]
+                    if self.docker_host:
+                        rm_v.extend(["-H", self.docker_host])
+                    rm_v.extend(["volume", "rm", "-f", vol_to_clean])
+                    try:
+                        proc_rmv = await asyncio.create_subprocess_exec(
+                            rm_v[0],
+                            *rm_v[1:],
+                            stdout=asyncio.subprocess.DEVNULL,
+                            stderr=asyncio.subprocess.DEVNULL,
+                        )
+                        await asyncio.wait_for(proc_rmv.wait(), timeout=5.0)
+                    except Exception:  # noqa: S110  # nosec B110
+                        pass
 
 
 class MockDockerClient(DockerClientInterface):
@@ -391,12 +596,21 @@ class BrokerDockerClient(DockerClientInterface):
     def __init__(
         self,
         broker_url: str | None = None,
+        auth_token: str | None = None,
         timeout: float = 60.0,
     ) -> None:
         self.broker_url = (
             broker_url
             or getattr(settings, "EXECUTION_BROKER_URL", None)
             or os.environ.get("EXECUTION_BROKER_URL")
+        )
+        token_setting = getattr(settings, "EXECUTION_BROKER_AUTH_TOKEN", None)
+        if token_setting is not None and hasattr(token_setting, "get_secret_value"):
+            tok_val = token_setting.get_secret_value()
+        else:
+            tok_val = str(token_setting) if token_setting else None
+        self.auth_token = (
+            auth_token or tok_val or os.environ.get("EXECUTION_BROKER_AUTH_TOKEN")
         )
         self.timeout = timeout
 
@@ -454,14 +668,24 @@ class BrokerDockerClient(DockerClientInterface):
             "environment": environment or {},
         }
         url = f"{self.broker_url.rstrip('/')}/v1/execute"
+        headers: dict[str, str] = {}
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+            headers["X-Broker-Token"] = str(self.auth_token)
+
         start_time = time.monotonic()
         try:
             resp = httpx.post(
                 url,
                 json=payload,
+                headers=headers,
                 timeout=float(policy.timeout_seconds + 10),
             )
             duration = time.monotonic() - start_time
+            if resp.status_code == 401:
+                raise ContainerSecurityError(
+                    "Execution broker authentication failed: Unauthorized"
+                )
             if resp.status_code == 400:
                 detail = resp.json().get("detail", "Request rejected by broker")
                 raise ContainerSecurityError(detail)
@@ -519,15 +743,25 @@ class BrokerDockerClient(DockerClientInterface):
             "environment": environment or {},
         }
         url = f"{self.broker_url.rstrip('/')}/v1/execute"
+        headers: dict[str, str] = {}
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+            headers["X-Broker-Token"] = str(self.auth_token)
+
         start_time = time.monotonic()
         try:
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
                     url,
                     json=payload,
+                    headers=headers,
                     timeout=float(policy.timeout_seconds + 10),
                 )
             duration = time.monotonic() - start_time
+            if resp.status_code == 401:
+                raise ContainerSecurityError(
+                    "Execution broker authentication failed: Unauthorized"
+                )
             if resp.status_code == 400:
                 detail = resp.json().get("detail", "Request rejected by broker")
                 raise ContainerSecurityError(detail)

@@ -8,6 +8,7 @@ import pytest
 from backend.app.core.config import Settings
 from backend.app.execution.broker import (
     ExecutionBrokerRequest,
+    ExecutionBrokerResponse,
     SandboxExecutionBroker,
 )
 from backend.app.execution.docker_runner import (
@@ -638,9 +639,8 @@ def test_execution_broker_executes_and_cleans_up_workspace(tmp_path: Path) -> No
     assert res.status == ExecutionStatus.COMPLETED
     assert res.exit_code == 0
     assert "3 passed" in res.stdout
-    # Verify per-execution workspace was thoroughly cleaned up
-    exec_ws_dir = ws_base / f"ws-{exec_id}"
-    assert not exec_ws_dir.exists()
+    # Verify per-execution workspace directory was thoroughly cleaned up
+    assert list(ws_base.iterdir()) == []
 
 
 def test_broker_docker_client_is_available() -> None:
@@ -661,3 +661,264 @@ def test_docker_runner_uses_broker_client_when_configured() -> None:
         runner = DockerRunner()
         assert isinstance(runner.client, BrokerDockerClient)
         assert runner.client.broker_url == "http://execution-broker:8001"
+
+
+# ---------------------------------------------------------------------------
+# 5. Broker Server-Owned Policy Enforcement Tests (Blocker 2)
+# ---------------------------------------------------------------------------
+
+
+def test_broker_rejects_network_enabled(tmp_path: Path) -> None:
+    """Verify caller cannot enable networking when server policy prohibits it."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        policy=ExecutionPolicy(network_enabled=True),
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any("network" in err.lower() for err in res.errors)
+
+
+@pytest.mark.parametrize(
+    "prohibited_cmd", ["bash", "sh", "curl", "nc", "cat", "rm", "sudo"]
+)
+def test_broker_rejects_command_allowlist_expansion(
+    tmp_path: Path, prohibited_cmd: str
+) -> None:
+    """Verify caller cannot execute commands outside broker's immutable allowlist."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=[prohibited_cmd, "-c", "echo hello"],
+        policy=ExecutionPolicy(allowed_commands=[prohibited_cmd]),
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any("not permitted" in err.lower() for err in res.errors)
+
+
+def test_broker_rejects_memory_beyond_maximum(tmp_path: Path) -> None:
+    """Verify caller cannot exceed server maximum memory limit."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        policy=ExecutionPolicy(memory_limit="2g"),
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any("memory" in err.lower() for err in res.errors)
+
+
+def test_broker_rejects_timeout_beyond_maximum(tmp_path: Path) -> None:
+    """Verify caller cannot exceed server maximum execution timeout."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        policy=ExecutionPolicy(timeout_seconds=120),
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any("timeout" in err.lower() for err in res.errors)
+
+
+@pytest.mark.parametrize(
+    "bad_env_key",
+    [
+        "DOCKER_HOST",
+        "API_KEY",
+        "GITHUB_TOKEN",
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "EXECUTION_BROKER_AUTH_TOKEN",
+        "LD_PRELOAD",
+    ],
+)
+def test_broker_rejects_prohibited_env_injection(
+    tmp_path: Path, bad_env_key: str
+) -> None:
+    """Verify sensitive environment variables cannot be injected via broker request."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        environment={bad_env_key: "leaked_secret"},
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any("prohibited" in err.lower() for err in res.errors)
+
+
+@pytest.mark.parametrize(
+    "bad_image",
+    [
+        "ubuntu:latest",
+        "alpine:latest",
+        "docker:dind",
+        "agentforge-sandbox:malicious",
+        "agentforge-sandbox:latest-evil",
+    ],
+)
+def test_broker_rejects_unauthorized_image(tmp_path: Path, bad_image: str) -> None:
+    """Verify unauthorized image is rejected by broker exact allowlist."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        command=["pytest", "-q"],
+        image=bad_image,
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert any(
+        "permitted" in err.lower() or "image" in err.lower() for err in res.errors
+    )
+
+
+# ---------------------------------------------------------------------------
+# 6. Broker Execution ID Validation & Path Traversal Tests (Blocker 3)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "traversal_id",
+    [
+        "../escaped",
+        "../../root",
+        "/etc/passwd",
+        "\\windows\\system32",
+        "exec\x00null",
+        "exec..dotdot",
+        "exec/slash",
+        "exec\\backslash",
+        "exec space",
+        "a" * 65,  # too long (>64)
+    ],
+)
+def test_broker_rejects_execution_id_traversal(
+    tmp_path: Path, traversal_id: str
+) -> None:
+    """Verify invalid or path-traversal execution IDs are strictly rejected."""
+    mock_cli = MockDockerClient(available=True)
+    broker = SandboxExecutionBroker(
+        docker_client=mock_cli,  # type: ignore[arg-type]
+        workspace_base_dir=tmp_path / "broker_ws",
+    )
+    req = ExecutionBrokerRequest(
+        execution_id=traversal_id,
+        command=["pytest", "-q"],
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+
+
+def test_broker_safe_cleanup_never_escapes_workspace_root(tmp_path: Path) -> None:
+    """Verify broker cleanup logic never deletes directories outside root."""
+    ws_base = tmp_path / "broker_ws"
+    ws_base.mkdir()
+    outside_dir = tmp_path / "outside_dir"
+    outside_dir.mkdir()
+    important_file = outside_dir / "keep.txt"
+    important_file.write_text("critical data")
+
+    broker = SandboxExecutionBroker(workspace_base_dir=ws_base)
+    # Attempt cleanup on outside directory
+    broker._safe_cleanup_workspace(outside_dir)
+    assert important_file.exists()
+    assert important_file.read_text() == "critical data"
+
+    # Attempt cleanup on root itself
+    broker._safe_cleanup_workspace(ws_base)
+    assert ws_base.exists()
+
+
+# ---------------------------------------------------------------------------
+# 7. Broker Authentication & FastAPI Endpoint Tests
+# ---------------------------------------------------------------------------
+
+
+def test_broker_authentication_via_fastapi() -> None:
+    """Verify broker API rejects unauthenticated requests when token is configured."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    with patch(
+        "backend.app.execution.broker.get_expected_broker_token",
+        return_value="super-secret-token",
+    ):
+        # Unauthenticated request
+        resp_no_auth = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+        )
+        assert resp_no_auth.status_code == 401
+
+        # Wrong token
+        resp_bad_auth = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Bearer wrong-token"},
+        )
+        assert resp_bad_auth.status_code == 401
+
+        # Valid Bearer token
+        mock_resp = ExecutionBrokerResponse(
+            execution_id="auth-test",
+            status=ExecutionStatus.COMPLETED,
+            exit_code=0,
+            stdout="ok",
+        )
+        with (
+            patch.object(SandboxExecutionBroker, "is_healthy", return_value=True),
+            patch.object(
+                SandboxExecutionBroker,
+                "execute_request",
+                return_value=mock_resp,
+            ),
+        ):
+            resp_ok = client.post(
+                "/v1/execute",
+                json={"command": ["pytest", "-q"]},
+                headers={"Authorization": "Bearer super-secret-token"},
+            )
+            assert resp_ok.status_code == 200
+            assert resp_ok.json()["status"] == "completed"
+
+            # Valid X-Broker-Token header
+            resp_x_ok = client.post(
+                "/v1/execute",
+                json={"command": ["pytest", "-q"]},
+                headers={"X-Broker-Token": "super-secret-token"},
+            )
+            assert resp_x_ok.status_code == 200
