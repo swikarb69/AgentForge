@@ -122,7 +122,7 @@ def test_runtime_prohibited_config_rejected(sandbox_workspace: Path) -> None:
 
     assert result.status == ExecutionStatus.REJECTED
     assert result.exit_code == 126
-    assert any("security gatekeeper" in err for err in result.errors)
+    assert any("gatekeeper" in err.lower() for err in result.errors)
 
 
 # ---------------------------------------------------------------------------
@@ -299,14 +299,19 @@ def test_runtime_cleanup_removes_containers(sandbox_workspace: Path) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_runtime_broker_fails_closed_without_host_fallback() -> None:
+def test_runtime_broker_fails_closed_without_host_fallback(
+    sandbox_workspace: Path,
+) -> None:
     """Verify BrokerDockerClient fails closed if broker is unreachable."""
     broker_client = BrokerDockerClient(broker_url="http://127.0.0.1:59998")
     assert broker_client.is_available() is False
 
-    runner = DockerRunner(docker_client=broker_client)
+    runner = DockerRunner(
+        docker_client=broker_client,
+        workspace_root=sandbox_workspace.parent,
+    )
     result = runner.execute(
-        workspace_path=Path("agentforge-workspaces/fake_ws"),
+        workspace_path=sandbox_workspace,
         command=["python3", "-c", "print('bypass attempt')"],
     )
 

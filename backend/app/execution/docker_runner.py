@@ -675,7 +675,10 @@ class DockerRunner:
                 execution_id=exec_id,
                 status=ExecutionStatus.REJECTED,
                 exit_code=126,
-                errors=[f"Container configuration rejected by gatekeeper: {sec_err}"],
+                errors=[
+                    "Container configuration rejected by security gatekeeper: "
+                    f"{sec_err}"
+                ],
             )
         completed_at = datetime.now(UTC).isoformat()
 
@@ -754,7 +757,10 @@ class DockerRunner:
                 execution_id=exec_id,
                 status=ExecutionStatus.REJECTED,
                 exit_code=126,
-                errors=[f"Container configuration rejected by gatekeeper: {sec_err}"],
+                errors=[
+                    "Container configuration rejected by security gatekeeper: "
+                    f"{sec_err}"
+                ],
             )
         completed_at = datetime.now(UTC).isoformat()
 
