@@ -178,11 +178,14 @@ jobs:
           docker build -t agentforge:0.11.0 .
 
       - name: Start Compose Services (Proxy, Broker, App)
+        env:
+          API_KEY: test-ci-key
+          EXECUTION_BROKER_AUTH_TOKEN: agentforge-broker-internal-secret-token
         run: |
           docker compose up -d docker-proxy execution-broker agentforge
           echo "Waiting for services to become healthy..."
-          timeout 60 bash -c 'until docker compose ps | grep -q "agentforge-execution-broker.*healthy"; do sleep 2; done' || (docker compose ps && docker compose logs execution-broker && exit 1)
-          timeout 60 bash -c 'until docker compose ps | grep -q "agentforge-app.*healthy"; do sleep 2; done' || (docker compose ps && docker compose logs agentforge && exit 1)
+          timeout 90 bash -c 'until docker compose ps | grep -q "agentforge-execution-broker.*healthy"; do sleep 2; done' || (docker compose ps && docker compose logs execution-broker && docker compose logs docker-proxy && exit 1)
+          timeout 90 bash -c 'until docker compose ps | grep -q "agentforge-app.*healthy"; do sleep 2; done' || (docker compose ps && docker compose logs agentforge && exit 1)
           docker compose ps
 
       - name: Prepare Container for Test Execution

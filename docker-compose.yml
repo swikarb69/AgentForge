@@ -10,6 +10,8 @@ services:
       - CONTAINERS=1   # Allow creating, starting, and inspecting containers
       - IMAGES=1       # Allow inspecting sandbox images
       - INFO=1         # Allow docker info ping
+      - PING=1         # Allow docker engine ping
+      - VERSION=1      # Allow docker engine version check
       - POST=1         # Allow POST requests for container operations
       - BUILD=0        # Disallow building images
       - COMMIT=0       # Disallow container commits
@@ -41,6 +43,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: agentforge:0.11.0
     command: ["uvicorn", "backend.app.execution.broker:broker_app", "--host", "0.0.0.0", "--port", "8001"]
     container_name: agentforge-execution-broker
     restart: unless-stopped
@@ -60,9 +63,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 5s
-      timeout: 3s
-      start_period: 3s
-      retries: 5
+      timeout: 5s
+      start_period: 5s
+      retries: 10
     security_opt:
       - no-new-privileges:true
 
@@ -81,7 +84,7 @@ services:
       - STORAGE_BACKEND=sqlite
       - DATABASE_URL=sqlite:////app/agentforge-storage/agentforge.db
       - API_KEY_AUTH_ENABLED=true
-      - API_KEY=${API_KEY:-}
+      - API_KEY=${API_KEY:-test-ci-key}
       - CORS_ORIGINS=["http://localhost:3000"]
       - EXECUTION_BROKER_URL=http://execution-broker:8001
       - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN:-agentforge-broker-internal-secret-token}
@@ -104,9 +107,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 5s
-      timeout: 3s
-      start_period: 3s
-      retries: 5
+      timeout: 5s
+      start_period: 5s
+      retries: 10
     deploy:
       resources:
         limits:

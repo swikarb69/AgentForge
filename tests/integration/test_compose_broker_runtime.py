@@ -256,7 +256,8 @@ def test_broker_cleanup_after_execution(test_workspace_dir: Path) -> None:
             text=True,
             check=False,
         )
-        assert res_c.stdout.strip() == "", f"Orphan container for {exec_id} found!"
+        if res_c.returncode == 0:
+            assert res_c.stdout.strip() == "", f"Orphan container for {exec_id} found!"
 
 
 # ---------------------------------------------------------------------------

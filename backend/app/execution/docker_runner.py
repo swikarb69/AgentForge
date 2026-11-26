@@ -97,7 +97,7 @@ class CLIDockerClient(DockerClientInterface):
             res = subprocess.run(  # noqa: S603  # nosec B603
                 cmd,
                 capture_output=True,
-                timeout=5,
+                timeout=10,
                 check=False,
             )
             return res.returncode == 0
