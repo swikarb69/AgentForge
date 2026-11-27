@@ -20,7 +20,10 @@ from backend.app.execution.exceptions import (
     ContainerSecurityError,
     WorkspaceSecurityError,
 )
-from backend.app.execution.gatekeeper import SandboxContainerPayloadValidator
+from backend.app.execution.gatekeeper import (
+    PROHIBITED_ENV_VARS,
+    SandboxContainerPayloadValidator,
+)
 from backend.app.execution.models import (
     ExecutionPolicy,
     ExecutionResult,
@@ -901,6 +904,19 @@ class DockerRunner:
                 errors=[f"Command rejected by security policy: {val_err}"],
             )
 
+        if environment:
+            for env_key in environment:
+                if env_key.upper() in PROHIBITED_ENV_VARS:
+                    return ExecutionResult(
+                        execution_id=exec_id,
+                        status=ExecutionStatus.REJECTED,
+                        exit_code=126,
+                        errors=[
+                            "Container configuration rejected by security gatekeeper: "
+                            f"Prohibited environment variable '{env_key}'"
+                        ],
+                    )
+
         sanitized_env = ExecutionPolicyEnforcer.sanitize_environment(
             environment, active_policy
         )
@@ -982,6 +998,19 @@ class DockerRunner:
                 exit_code=126,
                 errors=[f"Command rejected by security policy: {val_err}"],
             )
+
+        if environment:
+            for env_key in environment:
+                if env_key.upper() in PROHIBITED_ENV_VARS:
+                    return ExecutionResult(
+                        execution_id=exec_id,
+                        status=ExecutionStatus.REJECTED,
+                        exit_code=126,
+                        errors=[
+                            "Container configuration rejected by security gatekeeper: "
+                            f"Prohibited environment variable '{env_key}'"
+                        ],
+                    )
 
         sanitized_env = ExecutionPolicyEnforcer.sanitize_environment(
             environment, active_policy

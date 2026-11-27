@@ -171,9 +171,9 @@ def test_broker_concurrent_workspace_isolation() -> None:
             command=[
                 "python3",
                 "-c",
-                "import os; "
-                "print('T1_LEAK=' + str(os.path.exists('tenant1_private.txt'))); "
-                "print('T2=' + open('tenant2_private.txt').read().strip())",
+                "print('T1_LEAK=' + "
+                "str(__import__('os').path.exists('tenant1_private.txt')), "
+                "'T2=' + open('tenant2_private.txt').read().strip(), sep='\\n')",
             ],
         )
         assert res2.status == ExecutionStatus.COMPLETED
