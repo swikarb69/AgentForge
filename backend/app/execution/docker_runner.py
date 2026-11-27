@@ -1,6 +1,7 @@
 """Restricted Docker runner for sandboxed execution without host fallback."""
 
 import asyncio
+import logging
 import os
 import shutil
 import subprocess  # nosec B404
@@ -27,6 +28,8 @@ from backend.app.execution.models import (
     ResourceUsage,
 )
 from backend.app.execution.policy import ExecutionPolicyEnforcer
+
+logger = logging.getLogger(__name__)
 
 
 class DockerExecutionOutput(BaseModel):
@@ -100,8 +103,17 @@ class CLIDockerClient(DockerClientInterface):
                 timeout=10,
                 check=False,
             )
-            return res.returncode == 0
-        except (subprocess.SubprocessError, OSError):
+            if res.returncode != 0:
+                logger.warning(
+                    "Docker availability check failed (exit %d): %s | %s",
+                    res.returncode,
+                    res.stderr.decode(errors="replace").strip(),
+                    res.stdout.decode(errors="replace").strip(),
+                )
+                return False
+            return True
+        except (subprocess.SubprocessError, OSError) as exc:
+            logger.warning("Docker availability check error: %s", exc)
             return False
 
     def _build_docker_args(

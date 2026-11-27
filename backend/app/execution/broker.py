@@ -7,6 +7,7 @@ isolated workspaces, and guarantees resource cleanup.
 """
 
 import hmac
+import logging
 import os
 import re
 import shutil
@@ -36,6 +37,8 @@ from backend.app.execution.models import (
     ExecutionStatus,
 )
 from backend.app.execution.policy import ExecutionPolicyEnforcer
+
+logger = logging.getLogger(__name__)
 
 
 def parse_memory_bytes(mem_str: str) -> int:
@@ -555,6 +558,7 @@ def create_broker_app() -> FastAPI:
     def health_check() -> dict[str, Any]:
         healthy = broker.is_healthy()
         if not healthy:
+            logger.error("Broker health check failed: Docker daemon is not responsive.")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Docker daemon is not responsive on execution broker.",

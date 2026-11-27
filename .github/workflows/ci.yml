@@ -198,6 +198,16 @@ jobs:
             docker compose ps
             docker compose logs execution-broker
             docker compose logs docker-proxy
+            if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+              echo "### Broker Startup Failure Diagnostics" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              docker compose ps >> "$GITHUB_STEP_SUMMARY"
+              echo "--- execution-broker logs ---" >> "$GITHUB_STEP_SUMMARY"
+              docker compose logs execution-broker >> "$GITHUB_STEP_SUMMARY"
+              echo "--- docker-proxy logs ---" >> "$GITHUB_STEP_SUMMARY"
+              docker compose logs docker-proxy >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
             exit 1
           fi
 
@@ -214,6 +224,14 @@ jobs:
             echo "agentforge-app failed to become healthy!"
             docker compose ps
             docker compose logs agentforge
+            if [ -n "$GITHUB_STEP_SUMMARY" ]; then
+              echo "### App Startup Failure Diagnostics" >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+              docker compose ps >> "$GITHUB_STEP_SUMMARY"
+              echo "--- agentforge logs ---" >> "$GITHUB_STEP_SUMMARY"
+              docker compose logs agentforge >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
             exit 1
           fi
           docker compose ps

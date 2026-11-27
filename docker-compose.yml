@@ -6,8 +6,11 @@ services:
     image: tecnativa/docker-socket-proxy:latest
     container_name: agentforge-docker-proxy
     restart: unless-stopped
+    privileged: true
     environment:
       - CONTAINERS=1   # Allow creating, starting, and inspecting containers
+      - ALLOW_START=1  # Allow starting containers
+      - ALLOW_STOP=1   # Allow stopping containers
       - IMAGES=1       # Allow inspecting sandbox images
       - INFO=1         # Allow docker info ping
       - PING=1         # Allow docker engine ping
@@ -33,8 +36,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - broker-internal
-    security_opt:
-      - no-new-privileges:true
 
   # Dedicated Sandbox Execution Broker
   # Mediates all container execution requests with zero-trust validation.
