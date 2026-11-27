@@ -28,12 +28,13 @@ services:
       - SERVICES=0     # Disallow swarm services
       - SESSION=0      # Disallow sessions
       - SWARM=0        # Disallow swarm
-      - SYSTEM=0       # Disallow system modification
+      - SYSTEM=1       # Allow system inspection for healthchecks
       - TASKS=0        # Disallow swarm tasks
       - VOLUMES=1      # Allow broker to manage per-execution isolated volumes
       - SECRETS=0      # Disallow secrets access
+      - LOG_LEVEL=info # Detailed proxy logging for diagnostic auditing
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - broker-internal
 

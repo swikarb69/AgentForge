@@ -91,30 +91,44 @@ class CLIDockerClient(DockerClientInterface):
     def is_available(self) -> bool:
         """Check if docker binary exists and daemon responds to ping."""
         if not self.docker_binary:
+            logger.error(
+                "CLIDockerClient: docker binary not found in PATH: %s",
+                os.environ.get("PATH"),
+            )
             return False
         cmd = [self.docker_binary]
         if self.docker_host:
             cmd.extend(["-H", self.docker_host])
-        cmd.append("info")
-        try:
-            res = subprocess.run(  # noqa: S603  # nosec B603
-                cmd,
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
-            if res.returncode != 0:
-                logger.warning(
-                    "Docker availability check failed (exit %d): %s | %s",
+
+        # Probe version first (minimal permission requirement: VERSION=1),
+        # falling back to info (INFO=1).
+        for probe in ["version", "info"]:
+            try:
+                res = subprocess.run(  # noqa: S603  # nosec B603
+                    cmd + [probe],
+                    capture_output=True,
+                    timeout=10,
+                    check=False,
+                )
+                if res.returncode == 0:
+                    return True
+                logger.error(
+                    "Docker availability probe '%s' failed (cmd=%s, exit %d): "
+                    "stderr=%r | stdout=%r",
+                    probe,
+                    cmd + [probe],
                     res.returncode,
                     res.stderr.decode(errors="replace").strip(),
                     res.stdout.decode(errors="replace").strip(),
                 )
-                return False
-            return True
-        except (subprocess.SubprocessError, OSError) as exc:
-            logger.warning("Docker availability check error: %s", exc)
-            return False
+            except (subprocess.SubprocessError, OSError) as exc:
+                logger.error(
+                    "Docker availability probe '%s' error (cmd=%s): %s",
+                    probe,
+                    cmd + [probe],
+                    exc,
+                )
+        return False
 
     def _build_docker_args(
         self,
