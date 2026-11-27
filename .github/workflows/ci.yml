@@ -184,8 +184,38 @@ jobs:
         run: |
           docker compose up -d docker-proxy execution-broker agentforge || (docker compose logs && exit 1)
           echo "Waiting for services to become healthy..."
-          timeout 90 bash -c 'until [ "$(docker inspect --format=\"{{.State.Health.Status}}\" agentforge-execution-broker 2>/dev/null)" = "healthy" ]; do sleep 2; done' || (docker compose ps && docker compose logs execution-broker && docker compose logs docker-proxy && exit 1)
-          timeout 90 bash -c 'until [ "$(docker inspect --format=\"{{.State.Health.Status}}\" agentforge-app 2>/dev/null)" = "healthy" ]; do sleep 2; done' || (docker compose ps && docker compose logs agentforge && exit 1)
+          for i in {1..45}; do
+            STATUS=$(docker inspect --format='{{.State.Health.Status}}' agentforge-execution-broker 2>/dev/null || true)
+            if [ "$STATUS" = "healthy" ]; then
+              echo "agentforge-execution-broker is healthy."
+              break
+            fi
+            echo "Waiting for agentforge-execution-broker (attempt $i/45, current: ${STATUS:-starting})..."
+            sleep 2
+          done
+          if [ "$STATUS" != "healthy" ]; then
+            echo "agentforge-execution-broker failed to become healthy!"
+            docker compose ps
+            docker compose logs execution-broker
+            docker compose logs docker-proxy
+            exit 1
+          fi
+
+          for i in {1..45}; do
+            APP_STATUS=$(docker inspect --format='{{.State.Health.Status}}' agentforge-app 2>/dev/null || true)
+            if [ "$APP_STATUS" = "healthy" ]; then
+              echo "agentforge-app is healthy."
+              break
+            fi
+            echo "Waiting for agentforge-app (attempt $i/45, current: ${APP_STATUS:-starting})..."
+            sleep 2
+          done
+          if [ "$APP_STATUS" != "healthy" ]; then
+            echo "agentforge-app failed to become healthy!"
+            docker compose ps
+            docker compose logs agentforge
+            exit 1
+          fi
           docker compose ps
 
       - name: Prepare Container for Test Execution
