@@ -192,6 +192,14 @@ class Settings(BaseSettings):
                 errors.append(
                     "OPENAI_API_KEY must be configured when AI_PROVIDER is 'openai'."
                 )
+            if self.EXECUTION_BROKER_URL and (
+                not self.EXECUTION_BROKER_AUTH_TOKEN
+                or not self.EXECUTION_BROKER_AUTH_TOKEN.get_secret_value().strip()
+            ):
+                errors.append(
+                    "EXECUTION_BROKER_AUTH_TOKEN must be configured with a non-empty "
+                    "secret when EXECUTION_BROKER_URL is configured in production."
+                )
 
         return errors
 

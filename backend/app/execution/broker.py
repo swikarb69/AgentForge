@@ -13,6 +13,8 @@ import re
 import shutil
 import tempfile
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -142,32 +144,73 @@ def get_expected_broker_token() -> str | None:
     """Retrieve configured broker authentication token."""
     token = getattr(settings, "EXECUTION_BROKER_AUTH_TOKEN", None)
     if token is not None and hasattr(token, "get_secret_value"):
-        val = str(token.get_secret_value())
-        if val.strip():
-            return val.strip()
-    raw = os.environ.get("EXECUTION_BROKER_AUTH_TOKEN")
-    return str(raw).strip() if raw and str(raw).strip() else None
+        val = str(token.get_secret_value()).strip()
+        if val:
+            return val
+    raw = os.environ.get("EXECUTION_BROKER_AUTH_TOKEN", "").strip()
+    return raw if raw else None
 
 
 def verify_broker_auth(
     authorization: str | None = Header(None),
     x_broker_token: str | None = Header(None, alias="X-Broker-Token"),
 ) -> None:
-    """Validate incoming HTTP request authentication against configured token."""
+    """Validate incoming HTTP request authentication against configured token.
+
+    Broker authentication is strictly mandatory and cannot be disabled in production.
+    Missing, empty, or unconfigured token secrets cause immediate fail-closed rejection.
+    """
     expected = get_expected_broker_token()
+    if expected is not None:
+        expected = expected.strip()
     if not expected:
-        return
+        logger.error(
+            "Broker authentication failed closed: "
+            "server auth token is not configured or empty."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "Execution broker authentication token is not configured on the "
+                "server. Failing closed."
+            ),
+        )
 
     token: str | None = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.split("Bearer ", 1)[1].strip()
-    elif x_broker_token:
+    if authorization is not None:
+        parts = authorization.strip().split()
+        if len(parts) != 2 or parts[0] != "Bearer" or not parts[1].strip():
+            logger.warning("Rejected malformed Authorization header.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=(
+                    "Malformed Authorization header. Format must be 'Bearer <token>'."
+                ),
+            )
+        token = parts[1].strip()
+    elif x_broker_token is not None:
         token = x_broker_token.strip()
-
-    if not token or not hmac.compare_digest(token, expected):
+        if not token:
+            logger.warning("Rejected empty X-Broker-Token header.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="X-Broker-Token header must not be empty.",
+            )
+    else:
+        logger.warning(
+            "Rejected request with missing broker authentication credentials."
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing execution broker authentication token.",
+            detail="Missing execution broker authentication credentials.",
+        )
+
+    # Constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(token, expected):
+        logger.warning("Rejected invalid execution broker authentication token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid execution broker authentication token.",
         )
 
 
@@ -545,12 +588,27 @@ class SandboxExecutionBroker:
             self._safe_cleanup_workspace(exec_ws_dir)
 
 
+@asynccontextmanager
+async def broker_lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Ensure mandatory authentication secret is configured on broker startup."""
+    token = get_expected_broker_token()
+    if not token or not token.strip():
+        msg = (
+            "Execution broker startup failed: EXECUTION_BROKER_AUTH_TOKEN is "
+            "not configured or is empty. Broker authentication is mandatory."
+        )
+        logger.critical(msg)
+        raise RuntimeError(msg)
+    yield
+
+
 def create_broker_app() -> FastAPI:
     """Create FastAPI application for the isolated execution broker service."""
     app = FastAPI(
         title="AgentForge Execution Broker",
         description="Isolated container execution broker with zero-trust gatekeeper.",
         version="0.11.0",
+        lifespan=broker_lifespan,
     )
     broker = SandboxExecutionBroker()
 

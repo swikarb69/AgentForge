@@ -864,8 +864,8 @@ def test_broker_safe_cleanup_never_escapes_workspace_root(tmp_path: Path) -> Non
 # ---------------------------------------------------------------------------
 
 
-def test_broker_authentication_via_fastapi() -> None:
-    """Verify broker API rejects unauthenticated requests when token is configured."""
+def test_broker_auth_missing_token_configuration() -> None:
+    """Verify broker API fails closed (HTTP 500) when token is not configured."""
     from fastapi.testclient import TestClient
 
     from backend.app.execution.broker import create_broker_app
@@ -875,50 +875,281 @@ def test_broker_authentication_via_fastapi() -> None:
 
     with patch(
         "backend.app.execution.broker.get_expected_broker_token",
-        return_value="super-secret-token",
+        return_value=None,
     ):
-        # Unauthenticated request
-        resp_no_auth = client.post(
+        resp = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Bearer any-token"},
+        )
+        assert resp.status_code == 500
+        assert "not configured" in resp.json()["detail"].lower()
+
+
+def test_broker_auth_empty_token_configuration() -> None:
+    """Verify broker API fails closed (HTTP 500) when configured token is empty."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    with patch(
+        "backend.app.execution.broker.get_expected_broker_token",
+        return_value="   ",
+    ):
+        resp = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Bearer any-token"},
+        )
+        assert resp.status_code == 500
+        assert "not configured" in resp.json()["detail"].lower()
+
+
+def test_broker_lifespan_startup_failure_on_missing_or_empty_token() -> None:
+    """Verify broker app fails to start up when token is missing or empty."""
+    import pytest
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+
+    # Missing token
+    with (
+        patch(
+            "backend.app.execution.broker.get_expected_broker_token",
+            return_value=None,
+        ),
+        pytest.raises(
+            RuntimeError, match="EXECUTION_BROKER_AUTH_TOKEN is not configured"
+        ),
+    ):
+        with TestClient(app):
+            pass
+
+    # Empty token
+    with (
+        patch(
+            "backend.app.execution.broker.get_expected_broker_token",
+            return_value="",
+        ),
+        pytest.raises(
+            RuntimeError, match="EXECUTION_BROKER_AUTH_TOKEN is not configured"
+        ),
+    ):
+        with TestClient(app):
+            pass
+
+
+def test_broker_auth_missing_authorization_header() -> None:
+    """Verify broker API rejects requests with missing credentials (HTTP 401)."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    with patch(
+        "backend.app.execution.broker.get_expected_broker_token",
+        return_value="valid-secret-token",
+    ):
+        resp = client.post(
             "/v1/execute",
             json={"command": ["pytest", "-q"]},
         )
-        assert resp_no_auth.status_code == 401
+        assert resp.status_code == 401
+        assert "missing" in resp.json()["detail"].lower()
 
-        # Wrong token
-        resp_bad_auth = client.post(
+
+def test_broker_auth_incorrect_token() -> None:
+    """Verify broker API rejects requests with incorrect token (HTTP 401)."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    with patch(
+        "backend.app.execution.broker.get_expected_broker_token",
+        return_value="valid-secret-token",
+    ):
+        # Incorrect Bearer
+        resp_bearer = client.post(
             "/v1/execute",
             json={"command": ["pytest", "-q"]},
-            headers={"Authorization": "Bearer wrong-token"},
+            headers={"Authorization": "Bearer wrong-token-value"},
         )
-        assert resp_bad_auth.status_code == 401
+        assert resp_bearer.status_code == 401
+        assert "invalid" in resp_bearer.json()["detail"].lower()
 
+        # Incorrect X-Broker-Token
+        resp_x = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"X-Broker-Token": "wrong-token-value"},
+        )
+        assert resp_x.status_code == 401
+        assert "invalid" in resp_x.json()["detail"].lower()
+
+
+def test_broker_auth_malformed_authorization_header() -> None:
+    """Verify broker API rejects malformed authorization headers (HTTP 401)."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    with patch(
+        "backend.app.execution.broker.get_expected_broker_token",
+        return_value="valid-secret-token",
+    ):
+        # Bearer without token
+        resp1 = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Bearer"},
+        )
+        assert resp1.status_code == 401
+        assert "malformed" in resp1.json()["detail"].lower()
+
+        # Basic auth instead of Bearer
+        resp2 = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Basic dXNlcjpwYXNz"},
+        )
+        assert resp2.status_code == 401
+        assert "malformed" in resp2.json()["detail"].lower()
+
+        # Bearer with extra parts
+        resp3 = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Bearer token extra"},
+        )
+        assert resp3.status_code == 401
+        assert "malformed" in resp3.json()["detail"].lower()
+
+        # Empty X-Broker-Token
+        resp4 = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"X-Broker-Token": "   "},
+        )
+        assert resp4.status_code == 401
+        assert "empty" in resp4.json()["detail"].lower()
+
+
+def test_broker_auth_correct_token() -> None:
+    """Verify broker API accepts requests with valid token via headers."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    mock_resp = ExecutionBrokerResponse(
+        execution_id="auth-test",
+        status=ExecutionStatus.COMPLETED,
+        exit_code=0,
+        stdout="ok",
+    )
+
+    with (
+        patch(
+            "backend.app.execution.broker.get_expected_broker_token",
+            return_value="valid-secret-token",
+        ),
+        patch.object(SandboxExecutionBroker, "is_healthy", return_value=True),
+        patch.object(
+            SandboxExecutionBroker,
+            "execute_request",
+            return_value=mock_resp,
+        ),
+    ):
         # Valid Bearer token
-        mock_resp = ExecutionBrokerResponse(
-            execution_id="auth-test",
-            status=ExecutionStatus.COMPLETED,
-            exit_code=0,
-            stdout="ok",
+        resp_bearer = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"Authorization": "Bearer valid-secret-token"},
         )
-        with (
-            patch.object(SandboxExecutionBroker, "is_healthy", return_value=True),
-            patch.object(
-                SandboxExecutionBroker,
-                "execute_request",
-                return_value=mock_resp,
-            ),
-        ):
-            resp_ok = client.post(
-                "/v1/execute",
-                json={"command": ["pytest", "-q"]},
-                headers={"Authorization": "Bearer super-secret-token"},
-            )
-            assert resp_ok.status_code == 200
-            assert resp_ok.json()["status"] == "completed"
+        assert resp_bearer.status_code == 200
+        assert resp_bearer.json()["status"] == "completed"
 
-            # Valid X-Broker-Token header
-            resp_x_ok = client.post(
-                "/v1/execute",
-                json={"command": ["pytest", "-q"]},
-                headers={"X-Broker-Token": "super-secret-token"},
-            )
-            assert resp_x_ok.status_code == 200
+        # Valid X-Broker-Token header
+        resp_x = client.post(
+            "/v1/execute",
+            json={"command": ["pytest", "-q"]},
+            headers={"X-Broker-Token": "valid-secret-token"},
+        )
+        assert resp_x.status_code == 200
+        assert resp_x.json()["status"] == "completed"
+
+
+def test_broker_health_endpoint_no_information_exposure() -> None:
+    """Verify health endpoint does not expose secrets, sensitive config, or paths."""
+    from fastapi.testclient import TestClient
+
+    from backend.app.execution.broker import create_broker_app
+
+    app = create_broker_app()
+    client = TestClient(app)
+
+    with patch.object(SandboxExecutionBroker, "is_healthy", return_value=True):
+        resp = client.get("/health")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data == {"status": "ok", "docker_available": True}
+
+        # Ensure no sensitive keys or leaked credentials exist
+        for key, val in data.items():
+            assert "token" not in str(key).lower()
+            assert "secret" not in str(key).lower()
+            assert "path" not in str(key).lower()
+            assert "key" not in str(key).lower()
+            assert "/" not in str(val)
+            assert "\\" not in str(val)
+
+
+def test_broker_rejects_cpu_quota_beyond_maximum() -> None:
+    """Verify broker gatekeeper rejects requests requesting CPU limit beyond 2.0."""
+    broker = SandboxExecutionBroker(docker_client=MockDockerClient())
+    req = ExecutionBrokerRequest(
+        command=["python3", "-c", "print('cpu')"],
+        policy=ExecutionPolicy(cpu_limit=4.0),
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert "exceeds broker maximum allowed limit" in (res.error or "")
+
+
+def test_broker_rejects_process_limit_beyond_maximum() -> None:
+    """Verify broker gatekeeper rejects requests requesting PIDs limit beyond 64."""
+    broker = SandboxExecutionBroker(docker_client=MockDockerClient())
+    req = ExecutionBrokerRequest(
+        command=["python3", "-c", "print('pids')"],
+        policy=ExecutionPolicy(process_limit=128),
+    )
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert "exceeds broker maximum allowed limit" in (res.error or "")
+
+
+def test_broker_rejects_empty_command() -> None:
+    """Verify broker gatekeeper rejects requests with empty command list."""
+    broker = SandboxExecutionBroker(docker_client=MockDockerClient())
+    req = ExecutionBrokerRequest(command=[])
+    res = broker.execute_request(req)
+    assert res.status == ExecutionStatus.REJECTED
+    assert res.exit_code == 126
+    assert "cannot be empty" in (res.error or "")

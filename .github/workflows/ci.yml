@@ -177,10 +177,14 @@ jobs:
         run: |
           docker build -t agentforge:0.11.0 .
 
+      - name: Generate Ephemeral CI Authentication Secrets
+        run: |
+          CI_API_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+          CI_BROKER_TOKEN=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
+          echo "API_KEY=$CI_API_KEY" >> "$GITHUB_ENV"
+          echo "EXECUTION_BROKER_AUTH_TOKEN=$CI_BROKER_TOKEN" >> "$GITHUB_ENV"
+
       - name: Start Compose Services (Proxy, Broker, App)
-        env:
-          API_KEY: test-ci-key
-          EXECUTION_BROKER_AUTH_TOKEN: agentforge-broker-internal-secret-token
         run: |
           docker compose up -d docker-proxy execution-broker agentforge || (docker compose logs && exit 1)
           echo "Waiting for services to become healthy..."
@@ -245,13 +249,13 @@ jobs:
       - name: Verify Live Compose Broker Architecture & Security Boundaries
         run: |
           set -eo pipefail
-          docker compose exec -T -e FAIL_IF_SKIPPED=true -e API_KEY=test-ci-key agentforge pytest tests/integration/test_compose_broker_runtime.py -v -s -k "not test_broker_stopped_causes_fail_closed" 2>&1 | tee -a compose_e2e_output.txt
+          docker compose exec -T -e FAIL_IF_SKIPPED=true -e API_KEY="$API_KEY" -e EXECUTION_BROKER_AUTH_TOKEN="$EXECUTION_BROKER_AUTH_TOKEN" agentforge pytest tests/integration/test_compose_broker_runtime.py -v -s -k "not test_broker_stopped_causes_fail_closed" 2>&1 | tee -a compose_e2e_output.txt
 
       - name: Verify Fail-Closed Behavior When Broker Is Stopped
         run: |
           set -eo pipefail
           docker compose stop execution-broker
-          docker compose exec -T -e FAIL_IF_SKIPPED=true -e API_KEY=test-ci-key agentforge pytest tests/integration/test_compose_broker_runtime.py -v -s -k "test_broker_stopped_causes_fail_closed" 2>&1 | tee -a compose_e2e_output.txt
+          docker compose exec -T -e FAIL_IF_SKIPPED=true -e API_KEY="$API_KEY" -e EXECUTION_BROKER_AUTH_TOKEN="$EXECUTION_BROKER_AUTH_TOKEN" agentforge pytest tests/integration/test_compose_broker_runtime.py -v -s -k "test_broker_stopped_causes_fail_closed" 2>&1 | tee -a compose_e2e_output.txt
 
       - name: Publish E2E Test Summary
         if: always()

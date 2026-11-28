@@ -11,9 +11,11 @@ Validates the complete application-to-broker-to-sandbox path:
 - Fail-closed behavior without host fallback when broker is stopped
 """
 
+import asyncio
 import os
 import shutil
 import subprocess  # nosec B404
+import time
 import uuid
 from pathlib import Path
 
@@ -134,58 +136,159 @@ def test_broker_workspace_file_transfer(test_workspace_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 5: Concurrent Workspace Isolation
+# Test 5: Genuine Simultaneous Concurrent Workspace Isolation
 # ---------------------------------------------------------------------------
 
 
-def test_broker_concurrent_workspace_isolation() -> None:
-    """Verify execution 2 cannot access files from execution 1's workspace."""
+@pytest.mark.asyncio
+async def test_broker_simultaneous_concurrent_workspace_isolation() -> None:
+    """Verify simultaneous executions are strictly isolated in memory and storage."""
     base_root = Path(settings.WORKSPACE_ROOT).resolve()
     base_root.mkdir(parents=True, exist_ok=True)
-    ws1 = base_root / f"ws_tenant_1_{uuid.uuid4().hex[:6]}"
-    ws1.mkdir(parents=True, exist_ok=True)
-    (ws1 / "tenant1_private.txt").write_text("CONFIDENTIAL_TENANT_1")
 
-    ws2 = base_root / f"ws_tenant_2_{uuid.uuid4().hex[:6]}"
+    id1 = uuid.uuid4().hex[:8]
+    id2 = uuid.uuid4().hex[:8]
+    marker_a_name = f"marker_a_{id1}.txt"
+    marker_b_name = f"marker_b_{id2}.txt"
+    secret_a = f"CONFIDENTIAL_PAYLOAD_ALPHA_{id1}"
+    secret_b = f"CONFIDENTIAL_PAYLOAD_BETA_{id2}"
+
+    ws1 = base_root / f"ws_simultaneous_1_{id1}"
+    ws1.mkdir(parents=True, exist_ok=True)
+    (ws1 / marker_a_name).write_text(secret_a, encoding="utf-8")
+
+    ws2 = base_root / f"ws_simultaneous_2_{id2}"
     ws2.mkdir(parents=True, exist_ok=True)
-    (ws2 / "tenant2_private.txt").write_text("CONFIDENTIAL_TENANT_2")
+    (ws2 / marker_b_name).write_text(secret_b, encoding="utf-8")
 
     try:
         runner = DockerRunner(workspace_root=base_root)
 
-        # Execute request 1
-        res1 = runner.execute(
-            workspace_path=ws1,
-            command=[
-                "python3",
-                "-c",
-                "print('T1=' + open('tenant1_private.txt').read().strip())",
-            ],
+        # Both containers sleep for 1.5 seconds so active execution windows overlap.
+        # Container 1 reads marker A, checks that marker B does not exist.
+        # Container 2 reads marker B, checks that marker A does not exist.
+        script1 = (
+            "__import__('time').sleep(1.5) or print("
+            f"'A_READ=' + open('{marker_a_name}').read().strip(), "
+            f"'B_LEAK_IN_A=' + str(__import__('os').path.exists('{marker_b_name}')), "
+            "sep='\\n')"
         )
-        assert res1.status == ExecutionStatus.COMPLETED
-        assert "T1=CONFIDENTIAL_TENANT_1" in res1.stdout
+        script2 = (
+            "__import__('time').sleep(1.5) or print("
+            f"'B_READ=' + open('{marker_b_name}').read().strip(), "
+            f"'A_LEAK_IN_B=' + str(__import__('os').path.exists('{marker_a_name}')), "
+            "sep='\\n')"
+        )
+        cmd1 = ["python3", "-c", script1]
+        cmd2 = ["python3", "-c", script2]
 
-        # Execute request 2 with check that tenant 1's file does not exist
-        res2 = runner.execute(
-            workspace_path=ws2,
-            command=[
-                "python3",
-                "-c",
-                "print('T1_LEAK=' + "
-                "str(__import__('os').path.exists('tenant1_private.txt')), "
-                "'T2=' + open('tenant2_private.txt').read().strip(), sep='\\n')",
-            ],
+        t0 = time.monotonic()
+        res1, res2 = await asyncio.gather(
+            asyncio.to_thread(runner.execute, workspace_path=ws1, command=cmd1),
+            asyncio.to_thread(runner.execute, workspace_path=ws2, command=cmd2),
         )
-        assert res2.status == ExecutionStatus.COMPLETED
-        assert "T1_LEAK=False" in res2.stdout
-        assert "T2=CONFIDENTIAL_TENANT_2" in res2.stdout
+        elapsed = time.monotonic() - t0
+
+        assert res1.status == ExecutionStatus.COMPLETED, (
+            f"Execution 1 failed: {res1.errors}"
+        )
+        assert res2.status == ExecutionStatus.COMPLETED, (
+            f"Execution 2 failed: {res2.errors}"
+        )
+
+        # Overlapping execution verification: duration is ~1.5s - 4.5s
+        assert elapsed < 5.0, (
+            f"Expected overlapping execution duration < 5.0s, got {elapsed:.2f}s"
+        )
+
+        # Verify execution 1 cannot read B's marker
+        assert f"A_READ={secret_a}" in res1.stdout
+        assert "B_LEAK_IN_A=False" in res1.stdout
+        assert secret_b not in res1.stdout
+
+        # Verify execution 2 cannot read A's marker
+        assert f"B_READ={secret_b}" in res2.stdout
+        assert "A_LEAK_IN_B=False" in res2.stdout
+        assert secret_a not in res2.stdout
     finally:
         shutil.rmtree(ws1, ignore_errors=True)
         shutil.rmtree(ws2, ignore_errors=True)
 
 
 # ---------------------------------------------------------------------------
-# Test 6: Broker-Side Policy Enforcement & Prohibited Requests Rejection
+# Test 6: Broker Authentication Security Checks
+# ---------------------------------------------------------------------------
+
+
+def test_broker_auth_correct_token_permits_execution(
+    test_workspace_dir: Path,
+) -> None:
+    """Verify execution with valid configured auth token is permitted by broker."""
+    runner = DockerRunner(workspace_root=test_workspace_dir.parent)
+    result = runner.execute(
+        workspace_path=test_workspace_dir,
+        command=["python3", "-c", "print('AUTH_SUCCESS')"],
+    )
+    assert result.status == ExecutionStatus.COMPLETED
+    assert "AUTH_SUCCESS" in result.stdout
+
+
+def test_broker_auth_incorrect_token_prevents_execution(
+    test_workspace_dir: Path,
+) -> None:
+    """Verify execution with invalid token is rejected by broker with 401."""
+    bad_client = BrokerDockerClient(
+        broker_url=BROKER_URL,
+        auth_token="deliberately-invalid-token",  # noqa: S106  # nosec B106
+    )
+    runner = DockerRunner(
+        docker_client=bad_client,
+        workspace_root=test_workspace_dir.parent,
+    )
+    result = runner.execute(
+        workspace_path=test_workspace_dir,
+        command=["python3", "-c", "print('should not run')"],
+    )
+    assert result.status == ExecutionStatus.REJECTED
+    assert result.exit_code == 126
+    assert any("Unauthorized" in err for err in result.errors)
+
+
+def test_broker_auth_missing_token_prevents_execution() -> None:
+    """Verify direct POST without Authorization header is rejected with 401."""
+    assert BROKER_URL is not None
+    resp = httpx.post(
+        f"{BROKER_URL.rstrip('/')}/v1/execute",
+        json={"command": ["python3", "-c", "print('no auth')"]},
+        headers={},
+        timeout=5.0,
+    )
+    assert resp.status_code == 401
+    assert "missing" in resp.json().get("detail", "").lower()
+
+
+# ---------------------------------------------------------------------------
+# Test 7: Sandbox Cannot Access Host Docker Socket
+# ---------------------------------------------------------------------------
+
+
+def test_sandbox_cannot_access_host_docker_socket(test_workspace_dir: Path) -> None:
+    """Verify host Docker socket is completely inaccessible inside the sandbox."""
+    runner = DockerRunner(workspace_root=test_workspace_dir.parent)
+    sock_script = (
+        "print('DOCKER_SOCK_EXISTS=' + "
+        "str(__import__('os').path.exists('/var/run/docker.sock')))"
+    )
+    result = runner.execute(
+        workspace_path=test_workspace_dir,
+        command=["python3", "-c", sock_script],
+    )
+    assert result.status == ExecutionStatus.COMPLETED
+    assert "DOCKER_SOCK_EXISTS=False" in result.stdout
+
+
+# ---------------------------------------------------------------------------
+# Test 8: Broker-Side Policy Enforcement & Prohibited Requests Rejection
 # ---------------------------------------------------------------------------
 
 
@@ -224,7 +327,7 @@ def test_broker_rejects_prohibited_requests(test_workspace_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 7: Containers and Temporary Volumes Cleaned Up
+# Test 9: Containers and Temporary Volumes Cleaned Up After Execution
 # ---------------------------------------------------------------------------
 
 
@@ -260,8 +363,57 @@ def test_broker_cleanup_after_execution(test_workspace_dir: Path) -> None:
             assert res_c.stdout.strip() == "", f"Orphan container for {exec_id} found!"
 
 
+def test_broker_cleanup_after_failure_and_timeout(test_workspace_dir: Path) -> None:
+    """Verify cleanup occurs properly after both execution failure and timeout."""
+    runner = DockerRunner(workspace_root=test_workspace_dir.parent)
+
+    # 1. Failure case (non-zero exit code)
+    fail_id = f"fail-cleanup-{uuid.uuid4().hex[:8]}"
+    res_fail = runner.execute(
+        workspace_path=test_workspace_dir,
+        command=["python3", "-c", "raise SystemExit(42)"],
+        execution_id=fail_id,
+    )
+    assert res_fail.status == ExecutionStatus.FAILED
+    assert res_fail.exit_code == 42
+
+    # 2. Timeout case
+    timeout_id = f"timeout-cleanup-{uuid.uuid4().hex[:8]}"
+    res_timeout = runner.execute(
+        workspace_path=test_workspace_dir,
+        command=["python3", "-c", "__import__('time').sleep(10)"],
+        policy=ExecutionPolicy(timeout_seconds=2),
+        execution_id=timeout_id,
+    )
+    assert res_timeout.status == ExecutionStatus.TIMED_OUT
+    assert res_timeout.exit_code == 124
+
+    # Verify no orphan containers for either execution
+    docker_bin = shutil.which("docker")
+    if docker_bin:
+        for target_id in (fail_id, timeout_id):
+            res_c = subprocess.run(  # noqa: S603  # nosec B603
+                [
+                    docker_bin,
+                    "ps",
+                    "-a",
+                    "--filter",
+                    f"name={target_id}",
+                    "--format",
+                    "{{.ID}}",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res_c.returncode == 0:
+                assert res_c.stdout.strip() == "", (
+                    f"Orphan container for {target_id} found!"
+                )
+
+
 # ---------------------------------------------------------------------------
-# Test 8: Stopping Broker Causes Fail Closed Without Host Fallback
+# Test 10: Stopping Broker Causes Fail Closed Without Host Fallback
 # ---------------------------------------------------------------------------
 
 

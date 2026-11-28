@@ -6,7 +6,8 @@ services:
     image: tecnativa/docker-socket-proxy:latest
     container_name: agentforge-docker-proxy
     restart: unless-stopped
-    privileged: true
+    security_opt:
+      - no-new-privileges:true
     environment:
       - CONTAINERS=1   # Allow creating, starting, and inspecting containers
       - ALLOW_START=1  # Allow starting containers
@@ -55,7 +56,7 @@ services:
       - DOCKER_CONTAINER_GATEKEEPER_ENFORCED=true
       - DOCKER_PER_EXECUTION_VOLUMES=true
       - DOCKER_NAMED_VOLUME=agentforge-ws
-      - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN:-agentforge-broker-internal-secret-token}
+      - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN}
       - EXECUTION_BROKER_WORKSPACE_ROOT=/app/agentforge-broker-workspaces
     depends_on:
       - docker-proxy
@@ -86,10 +87,10 @@ services:
       - STORAGE_BACKEND=sqlite
       - DATABASE_URL=sqlite:////app/agentforge-storage/agentforge.db
       - API_KEY_AUTH_ENABLED=true
-      - API_KEY=${API_KEY:-test-ci-key}
+      - API_KEY=${API_KEY}
       - CORS_ORIGINS=["http://localhost:3000"]
       - EXECUTION_BROKER_URL=http://execution-broker:8001
-      - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN:-agentforge-broker-internal-secret-token}
+      - EXECUTION_BROKER_AUTH_TOKEN=${EXECUTION_BROKER_AUTH_TOKEN}
       - DOCKER_CONTAINER_GATEKEEPER_ENFORCED=true
       - DOCKER_PER_EXECUTION_VOLUMES=true
       - WORKSPACE_ROOT=/app/agentforge-workspaces

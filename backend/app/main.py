@@ -1,5 +1,6 @@
 """AgentForge FastAPI Foundation Entrypoint."""
 
+import hmac
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -101,7 +102,11 @@ class APIKeyAuthMiddleware(BaseHTTPMiddleware):
             settings.API_KEY.get_secret_value() if settings.API_KEY else None
         )
 
-        if not api_key or not configured_key or api_key != configured_key:
+        if (
+            not api_key
+            or not configured_key
+            or not hmac.compare_digest(api_key, configured_key)
+        ):
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Invalid or missing API key"},
